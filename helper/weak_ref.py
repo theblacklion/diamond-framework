@@ -1,3 +1,9 @@
+# Weakref wrapper.
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
 import weakref
 import new
 

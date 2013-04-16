@@ -1,3 +1,7 @@
+# Ordered Set.
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com> (partly)
+
 ## {{{ http://code.activestate.com/recipes/577624/ (r2)
 import collections
 from itertools import chain

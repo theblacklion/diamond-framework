@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+#
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
 import os
 import sys
 import textwrap

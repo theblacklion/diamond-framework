@@ -1,3 +1,9 @@
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
 from threading import Thread
 import time
 import pygame

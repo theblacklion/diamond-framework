@@ -1,3 +1,9 @@
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
 # TODO make use of http://docs.python.org/library/itertools.html
 from inspect import getargspec
 from diamond.helper.weak_ref import Wrapper

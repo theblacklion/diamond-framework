@@ -1,3 +1,9 @@
+# Slicable Set.
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
 # from diamond.decorators import time
 
 

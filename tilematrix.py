@@ -1,3 +1,9 @@
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
 # TODO Try to implement loading and creation of sectors via background thread.
 #      I think the complete update_sectors method could be within an own thread.
 #      This way we would block the main loop much less.

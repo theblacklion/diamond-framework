@@ -1,3 +1,9 @@
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
 from diamond.transition import TransitionManager, Transition
 from diamond.decorators import dump_args
 

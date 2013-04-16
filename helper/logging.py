@@ -1,3 +1,9 @@
+# Helper for logging.
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
 import inspect
 from os.path import basename
 

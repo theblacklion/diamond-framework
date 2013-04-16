@@ -1,4 +1,10 @@
 # TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+# TODO
 # - What should happen when we load a sheet after creating/loading a map?
 # - load_map() should fill up and truncate rows as necessary.
 # - Handle situations where build_map builds maps of different sizes.
