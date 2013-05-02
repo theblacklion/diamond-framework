@@ -281,6 +281,9 @@ class Sprite(object):
         del self.action_queue[:]
         if not hard and self.action == name:
             return  # Don't reset to frame 0 - just keep going.
+        if not self.frames:  # TODO is this ok? It helps setting action much earlier.
+            self.add_action(name)
+            return
         self.action = name
         self.frame_no = 0
         self.frame = self.frames[name][0]
