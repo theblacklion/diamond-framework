@@ -28,7 +28,7 @@ filename = join(dirname(__file__), filename)
 '''.lstrip()
 
 JSON_SPRITE_TEMPLATE = '''
-        "%(id)d": {"none": [[[%(x)d, %(y)d, %(w)d, %(h)d], [%(x)d, %(y)d], [0, 0], 60]]},
+        "%(id)s": {"none": [[[%(x)d, %(y)d, %(w)d, %(h)d], [%(x)d, %(y)d], [0, 0], 60]]},
 '''.rstrip()
 
 JSON_TEMPLATE = '''
@@ -64,14 +64,15 @@ def get_size(filename):
     return image_width, image_height
 
 
-def get_spritesheet(img_w, img_h, tile_w, tile_h):
+def get_spritesheet(img_w, img_h, tile_w, tile_h, use_ids=False):
     sheet = OrderedDict()
     cur_id = 0
     y = 0
     while y < img_h:
         x = 0
         while x < img_w:
-            sheet[str(cur_id)] = {'none': [[(x, y, tile_w, tile_h), (x, y), (0, 0), 60]]}
+            key = str(cur_id) if use_ids else '%d,%d' % (x // tile_w, y // tile_h)
+            sheet[key] = {'none': [[(x, y, tile_w, tile_h), (x, y), (0, 0), 60]]}
             cur_id += 1
             x += tile_w
         y += tile_h
@@ -103,6 +104,10 @@ def main():
                         metavar='WIDTHxHEIGHT',
                         help='Provide size (width and height) of each tile.',
     )
+    parser.add_argument('--use-ids', dest='use_ids', action='store_true',
+                        default=False,
+                        help='Use IDs as generated keys instead of matrix coordinates.',
+    )
     parser.add_argument('--version', action='version',
                         version='%(prog)s ' + APP_VERSION,
                         help='Show program\'s version number and exit.')
@@ -115,7 +120,7 @@ def main():
 
     data = OrderedDict(
         filename=args.image,
-        sprites=get_spritesheet(image_width, image_height, tile_width, tile_height),
+        sprites=get_spritesheet(image_width, image_height, tile_width, tile_height, use_ids=args.use_ids),
         tile_size=(tile_width, tile_height),
     )
     # print data
@@ -130,13 +135,13 @@ def main():
     if not os.path.exists(python_file):
         open(python_file, 'wb').write(PYTHON_TEMPLATE)
     else:
-        print 'INFO: Not created python file. Seems to already exist:', python_file
+        print('INFO: Not created python file. Seems to already exist: %s' % python_file)
 
     sprites = []
     for key, actions in data['sprites'].iteritems():
         frame = actions['none'][0]
         sprites.append(JSON_SPRITE_TEMPLATE % dict(
-            id=int(key),
+            id=key,
             x=frame[0][0],
             y=frame[0][1],
             w=frame[0][2],
@@ -149,7 +154,7 @@ def main():
         tile_h=tile_height,
     )
     open(json_file, 'wb').write(json)
-    print 'Written JSON data to file:', json_file
+    print('Written JSON data to file: %s' % json_file)
 
 
 if __name__ == '__main__':
