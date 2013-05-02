@@ -16,7 +16,7 @@ from diamond.node import Node
 from diamond.fps import Fps
 from diamond.decorators import dump_args, time
 
-from data.selection import Selection
+from diamond.tools.tilematrix.selection import Selection
 
 
 class TilemapScene(Scene):

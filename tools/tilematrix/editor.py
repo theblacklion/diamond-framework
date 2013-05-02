@@ -18,8 +18,8 @@ sys.path.insert(0, os.path.abspath(engine_path))
 
 from diamond.scene import SceneManager
 
-from data.tilesheet import TilesheetScene
-from data.tilemap import TilemapScene
+from diamond.tools.tilematrix.tilesheet import TilesheetScene
+from diamond.tools.tilematrix.tilemap import TilemapScene
 
 
 APP_NAME = 'TileMatrix Editor'

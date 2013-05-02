@@ -12,7 +12,7 @@ from diamond.scene import Scene
 from diamond.tilematrix import TileMatrix
 from diamond import event
 
-from data.selection import Selection
+from diamond.tools.tilematrix.selection import Selection
 
 
 class TilesheetScene(Scene):
