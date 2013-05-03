@@ -64,6 +64,8 @@ class Ticker(AbstractThread):
         ]
         self.is_threaded = True
         # print 'Init ticker:', self
+        # import traceback
+        # traceback.print_stack()
 
     def teardown(self):
         self.clear()
@@ -250,5 +252,6 @@ class Ticker(AbstractThread):
         return self.tickers[0][2] if self.tickers else None
 
     def join(self):
+        event.remove_listeners(self.listeners)
         self.clear()
         super(Ticker, self).join()

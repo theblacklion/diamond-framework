@@ -35,6 +35,7 @@ class Scene(object):
         self.__bound_listeners = set()
         self.__bound_tickers = set()
         self.__bound_threads = set()
+        self.__managed_objects = set()
 
     def setup(self):
         '''
@@ -46,6 +47,8 @@ class Scene(object):
         self.root_node = root_node
 
     def bind(self, *candidates):
+        has_method = lambda obj, method: hasattr(obj, method) and \
+            isinstance(getattr(obj, method), collections.Callable)
         for candidate in candidates:
             obj = candidate
             if type(obj) is Wrapper:
@@ -60,12 +63,14 @@ class Scene(object):
                 else:
                     # print 2, candidate
                     self.__bound_tickers.add(candidate)
-            elif hasattr(obj, 'tick') and isinstance(obj.tick, collections.Callable):
+            elif has_method(obj, 'tick'):
                 self.__bound_tickers.add(candidate)
             else:
                 raise Exception('Only Listener and Ticker objects can be bond to the scene.')
 
     def remove_bonds(self, *candidates):
+        has_method = lambda obj, method: hasattr(obj, method) and \
+            isinstance(getattr(obj, method), collections.Callable)
         listeners = []
         for candidate in candidates:
             obj = candidate
@@ -77,7 +82,7 @@ class Scene(object):
             elif isinstance(obj, Thread):
                 candidate.join()
                 self.__bound_threads.remove(candidate)
-            elif hasattr(obj, 'tick') and isinstance(obj.tick, collections.Callable):
+            elif has_method(obj, 'tick'):
                 candidate.clear()
                 self.__bound_tickers.remove(candidate)
             else:
@@ -117,6 +122,28 @@ class Scene(object):
                                context__event__key__eq=pygame.locals.K_F1),
         )
 
+    def manage(self, *candidates):
+        for candidate in candidates:
+            self.__managed_objects.add(candidate)
+
+    def unmanage(self, *candidates):
+        for candidate in candidates:
+            self.__managed_objects.remove(candidate)
+
+    # def setup_managed_objects(self):
+    #     has_method = lambda obj, method: hasattr(obj, method) and \
+    #         isinstance(getattr(obj, method), collections.Callable)
+    #     for candidate in self.__managed_objects:
+    #         if has_method(candidate, 'setup'):
+    #             candidate.setup()
+
+    def teardown_managed_objects(self):
+        has_method = lambda obj, method: hasattr(obj, method) and \
+            isinstance(getattr(obj, method), collections.Callable)
+        for candidate in self.__managed_objects:
+            if has_method(candidate, 'teardown'):
+                candidate.teardown()
+
     def teardown(self):
         '''
         This method is being called before the scene object is being killed.
@@ -125,6 +152,9 @@ class Scene(object):
         Add your own teardown code before this method.
         '''
         # print('Scene.teardown')
+        log_debug('\n0. unmanage all objects')
+        self.teardown_managed_objects()
+        self.unmanage(*self.__managed_objects)
         log_debug('\n5. remove_all_bonds')
         self.remove_all_bonds()
         log_debug('1. detach_from_display')
@@ -169,7 +199,7 @@ class SceneManager(object):
     def __init__(self):
         super(SceneManager, self).__init__()
         self.display = None
-        os.environ['SDL_VIDEO_CENTERED'] = '1'
+        # os.environ['SDL_VIDEO_CENTERED'] = '1'
         pygame.mixer.pre_init(44100, -16, 2, 1024)
         pygame.init()
         self.scenes = {}
@@ -269,6 +299,45 @@ class SceneManager(object):
                 self.setup_scene(scene_id)
         return scene_frame['instance']
 
+    def _loop_scene(self):
+        scenes = self.scenes.values()
+        for scene in scenes:
+            if scene['instance'] is not None:
+                event.emit('scene.ready', scene['instance'])
+                scene['instance'].show()
+
+        display_update = self.display.update
+        event_get = pygame.event.get
+        while self.active_scene_id is not None:
+            # TODO generate list of instances somewhere for faster looping.
+            for scene in scenes:
+                scene_instance = scene['instance']
+                try:
+                    loop_iteration = scene_instance.loop_iteration
+                except AttributeError:
+                    pass
+                else:
+                    try:
+                        if scene['scene_id'] == self.active_scene_id:
+                            for pg_event in event_get():
+                                event.emit('scene.event.system', Array(
+                                    scene=scene_instance, event=pg_event))
+                        loop_iteration()
+                    except QuitSceneEvent:
+                        scene_id = scene['scene_id']
+                        self.teardown_scene(scene_id)
+                        if self.active_scene_id == scene_id:
+                            self.active_scene_id = None
+            display_update()
+
+        for scene in scenes:
+            if scene['instance'] is not None:
+                self.teardown_scene(scene['scene_id'])
+
+        display_update()
+
+        # print locals().keys()
+
     def run(self, scene_id=None):
         event.emit('scenemanager.ready', self)
 
@@ -284,44 +353,7 @@ class SceneManager(object):
         self.setup_scene(scene_id)
 
         # We enclose our loop in order to have it easier with our GC.
-        def loop_closure():
-            scenes = self.scenes.values()
-            for scene in scenes:
-                if scene['instance'] is not None:
-                    event.emit('scene.ready', scene['instance'])
-                    scene['instance'].show()
-
-            display_update = self.display.update
-            event_get = pygame.event.get
-            while self.active_scene_id is not None:
-                # TODO generate list of instances somewhere for faster looping.
-                for scene in scenes:
-                    scene_instance = scene['instance']
-                    try:
-                        loop_iteration = scene_instance.loop_iteration
-                    except AttributeError:
-                        pass
-                    else:
-                        try:
-                            if scene['scene_id'] == self.active_scene_id:
-                                for pg_event in event_get():
-                                    event.emit('scene.event.system', Array(scene=scene_instance, event=pg_event))
-                            loop_iteration()
-                        except QuitSceneEvent:
-                            scene_id = scene['scene_id']
-                            self.teardown_scene(scene_id)
-                            if self.active_scene_id == scene_id:
-                                self.active_scene_id = None
-                display_update()
-
-            for scene in scenes:
-                if scene['instance'] is not None:
-                    self.teardown_scene(scene['scene_id'])
-
-            display_update()
-
-            # print locals().keys()
-        loop_closure()
+        self._loop_scene()
 
         self.display.__del__()  # Tell display to clean it up.
 

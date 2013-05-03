@@ -61,6 +61,7 @@ class Sprite(object):
         self.track_movement = False
         self.track_animation_loop = False
         self.track_animation_events = False
+        # print 'Sprite.__init__(%s)' % self, vault
 
     # @dump_args
     def __del__(self):
@@ -292,6 +293,7 @@ class Sprite(object):
         self._rebuild_frame_plan()
         self.is_dirty = True
         self._recalc_real_pos()
+        self._add_to_update_list()
 
     def add_action(self, name):
         self.action_queue.append(name)

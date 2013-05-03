@@ -384,6 +384,7 @@ class Display(object):
         self.update()
 
     def __del__(self):
+        # print 'Display.__del__(%s)' % self
         self.ticker.join()
 
     def enable_clipping(self):

@@ -116,7 +116,8 @@ def remove_listener(candidate):
             except ValueError:
                 pass
     else:
-        listeners[listener.event_name].remove(listener)
+        if listener is not None:
+            listeners[listener.event_name].remove(listener)
 
 
 # @dump_args

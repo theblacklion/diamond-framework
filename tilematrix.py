@@ -450,6 +450,19 @@ class TileMatrixSector(Node):
         # print
         super(TileMatrixSector, self).remove_from_parent(cascade=cascade)
 
+    def on_node_removed(self, node=None, hard=True):
+        # print 'on_node_removed(%s)' % self
+        groups = group_by(chain(*self.__sector_map.itervalues()), key=lambda item: item[0], val=lambda item: item[1])
+        layers = self.get_layers()
+        for z, children in groups.iteritems():
+            # print z, children
+            layers[z].remove_children(children)
+        self.__sector_map.clear()
+        self.__all_sprites.clear()
+        self.hidden_tiles.clear()
+        self.shown_tiles.clear()
+        super(TileMatrixSector, self).on_node_removed(node=node, hard=hard)
+
     def get_layer(self, z):
         for layer in self.get_child_nodes():
             if layer.order_pos == z:
