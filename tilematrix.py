@@ -1029,7 +1029,7 @@ class TileMatrix(Node):
             if id is not None:
                 # Check if default value has been set and remove it.
                 sprites = sector.get_sprites_at(x, y)
-                point = self.__matrix.get_point(x, y)
+                point = self.__matrix.get_point(*new_point_data[:2])
                 # print '***', sprites, point
                 if sprites and not point:
                     set_sprite_at = sector.set_sprite_at
