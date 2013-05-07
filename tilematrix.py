@@ -435,6 +435,7 @@ class TileMatrixSector(Node):
                         layer = self.__tilematrix.add_layer(z)
                     layer.add_children([item[1] for item in items])
                     self.hidden_tiles |= set(items)
+        self.cached_representation = True
 
     def remove_from_parent(self, cascade=True):
         # print 'remove_from_parent(%s)' % self

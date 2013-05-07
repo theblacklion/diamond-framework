@@ -668,6 +668,8 @@ class Display(object):
         for item in self.display_list:
             if isinstance(item, Node):
                 continue
+            if not item.is_drawable:
+                continue
             if item.pos_real is None or item.rgba_inherited[3] == 0.0:
                 # print 'rebuild_drawables', item, item.rgba_inherited
                 continue

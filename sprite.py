@@ -54,6 +54,7 @@ class Sprite(object):
         self.is_hidden = False
         self.is_attached = False
         self.is_animation_paused = False
+        self.is_drawable = True
         self.listeners = [
             event.add_listener(self.display_screen_dropped_event, 'display.screen.dropped'),
             event.add_listener(self.display_screen_created_event, 'display.screen.created')
@@ -701,6 +702,8 @@ class Sprite(object):
             if not self.is_hidden:
                 self.display.drawables_dl_dirty = True
             self.is_dirty = False
+            if self.parent_node and self is not self.parent_node.cached_representation:
+                self.parent_node.cached_representation_dirty = True
 
 
 class SpriteEffects(TransitionEffects):

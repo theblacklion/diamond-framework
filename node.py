@@ -10,6 +10,7 @@ import pygame
 
 from diamond import event
 from diamond.sprite import Sprite
+from diamond.vault import GeneratedVault
 from diamond.helper.slicable_set import SlicableSet
 from diamond.helper.ordered_set import OrderedSet
 from diamond.decorators import dump_args, time
@@ -30,7 +31,7 @@ class Node(object):
         self.child_sprites_need_reorder = False
         self.pos = (0, 0)
         self.pos_real = (0, 0)
-        self.pos_real_in_tree = None  #(0, 0)
+        self.pos_real_in_tree = None  # (0, 0)
         self.order_pos = 0  # Influences ordering along children of parent node.
         self.manage_order_pos = True  # Auto presets order_pos with len() + 1.
         self.hotspot = (0, 0)
@@ -47,6 +48,8 @@ class Node(object):
         self.track_movement = False
         self.cached_tree = None
         self.cached_tree_dirty = True
+        self.cached_representation = None
+        self.cached_representation_dirty = True
 
     def set_clipping_region(self, x, y, w, h):
         self.clipping_region = pygame.Rect(x, y, w, h)
@@ -94,6 +97,16 @@ class Node(object):
         self.__order_matters = bool
 
     order_matters = property(__get_order_matters, __set_order_matters)
+
+    def set_caching(self, bool):
+        if bool:
+            if self.cached_representation is None:
+                self.cached_representation = True
+        else:
+            if self.cached_representation is not None:
+                # TODO correctly remove sprite and restore children
+
+                self.cached_representation = None
 
     # @time
     def on_node_added(self, display, node=None, hard=True):
@@ -508,6 +521,10 @@ class Node(object):
             self.child_sprites = child_nodes_type(sorted(self.child_sprites, key=self.__sprite_cmp_key, reverse=False))
             self.child_sprites_need_reorder = False
             self.cached_tree_dirty = True
+        if type(self.cached_representation) is Sprite:
+            items = [SlicableSet([self.cached_representation])]
+        else:
+            items = [self.child_sprites]
         items = [self.child_sprites]
         if self.cached_tree_dirty:
             # print self
@@ -654,9 +671,77 @@ class Node(object):
         except AttributeError:
             pass
 
+    # @time
+    def _create_cached_representation(self):
+            # Gather range of child sprites.
+            # print(self.child_sprites)
+            get_rect = lambda child: pygame.Rect(child.pos[0], child.pos[1], child.size[0], child.size[1])
+            rects = [get_rect(child) for child in self.child_sprites]
+            # print(rects)
+            skip_sprites = False
+            if rects:
+                rect = rects[0]
+                rect.unionall_ip(rects)
+            else:
+                rect = pygame.Rect(0, 0, 1, 1)
+                skip_sprites = True
+            # print(rect)
+
+            # Create surface to draw on.
+            # image = pygame.Surface((rect.w, rect.h), pygame.locals.SRCALPHA).convert_alpha()
+            vault = GeneratedVault()
+            image = vault.generate_surface(*rect.size)
+            # image.fill((255, 255, 255, 128))
+
+            if not skip_sprites:
+                # Draw sprites on surface.
+                for child in self.child_sprites:
+                    # Skip empty or uninitialized sprites.
+                    if child.size == (0, 0):
+                        continue
+                    # print(child, child.frame)
+                    frame = child.frame
+                    gamma = str(frame['current_gamma'])
+                    surface = frame['surfaces'][gamma]
+                    pos = child.pos[0] - rect.x, child.pos[1] - rect.y
+                    # print(surface, pos)
+                    image.blit(surface, pos, surface.get_rect())
+                    child.is_drawable = False
+            else:
+                for child in self.child_sprites:
+                    child.is_drawable = False
+
+            # Generate final sprite.
+            sprite = vault.add_sprite('default')
+            action = sprite.add_action('none')
+            action.add_frame((0, 0, rect.w, rect.h), (0, 0), (0, 0))
+            sprite = Sprite.make(vault)
+
+            # Set it up.
+            sprite.pos = (rect.x, rect.y)
+            sprite.add_to(self)
+
+            # And save it.
+            self.cached_representation = sprite
+            self.cached_representation_dirty = False
+
+    # @time
+    def _rebuild_cached_representation(self):
+        if type(self.cached_representation) is Sprite:
+            # TODO should just update part of the surface instead of rebuild.
+            self.cached_representation.remove_from_parent()
+            self.cached_representation = True
+
     def update(self):
         if self.parent_node is None:
             return
+        if self.cached_representation is True:
+            self._create_cached_representation()
+        elif self.cached_representation_dirty:
+            if self.cached_representation is not None:
+                self._rebuild_cached_representation()
+            else:
+                self.cached_representation_dirty = False
         if self.pos_is_dirty:
             self._recalc_real_pos()
             self.pos_is_dirty = False
