@@ -217,7 +217,7 @@ class Ticker(AbstractThread):
 
             count += 1
             if count > handle_limit_per_iteration:
-                print 'max tickers handle limit per iteration reached (%d/%d).' % (count, handle_limit_per_iteration)
+                print('max tickers handle limit per iteration reached (%d/%d).' % (count, handle_limit_per_iteration))
                 break
 
             # print 'Ticker.tick after %d (%d / %d) msecs: %s(*%s, **%s)' % (msecs, dest_time, dest_time - time, func, args, kwargs)

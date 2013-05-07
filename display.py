@@ -117,10 +117,10 @@ class Texture(object):
 
     def __del__(self):
         # print 'Texture.__del__(%s)' % self
-        glDeleteTextures(self.texture)
         cache_id = id(self.surface)
         Texture.__textures[cache_id][1] -= 1
         if Texture.__textures[cache_id][1] <= 0:
+            glDeleteTextures(self.texture)
             del Texture.__textures[cache_id]
 
     @classmethod
@@ -666,10 +666,8 @@ class Display(object):
         drawables = self._drawables = []
         drawables_append = drawables.append
         for item in self.display_list:
-            if isinstance(item, Node):
-                continue
-            if not item.is_drawable:
-                continue
+            # if isinstance(item, Node):
+            #     continue
             if item.pos_real is None or item.rgba_inherited[3] == 0.0:
                 # print 'rebuild_drawables', item, item.rgba_inherited
                 continue
