@@ -210,6 +210,7 @@ class Node(object):
         # Notify display to rebuild DL.
         if self.display:
             self.display.on_node_children_added(nodes + sprites)
+        self.cached_representation_dirty = True
 
     # @dump_args
     def remove_all(self, cascade=True):
@@ -392,6 +393,13 @@ class Node(object):
 
     def get_gamma(self):
         return self.gamma * 100
+
+    # TODO rework for using simple path system?
+    def find_node(self, name):
+        for item in chain(self.child_nodes, self.child_nodes_hidden):
+            if item.name == name:
+                return item
+        return None
 
     # @dump_args
     def on_child_hidden(self, child):
@@ -673,64 +681,74 @@ class Node(object):
 
     # @time
     def _create_cached_representation(self):
-            # Gather range of child sprites.
-            # print(self.child_sprites)
-            get_rect = lambda child: pygame.Rect(child.pos[0], child.pos[1], child.size[0], child.size[1])
-            rects = [get_rect(child) for child in self.child_sprites]
-            # print(rects)
-            skip_sprites = False
-            if rects:
-                rect = rects[0]
-                rect.unionall_ip(rects)
-            else:
-                rect = pygame.Rect(0, 0, 1, 1)
-                skip_sprites = True
-            # print(rect)
+        # Gather range of child sprites.
+        # print(self.child_sprites, len(self.child_sprites), self.child_sprites_hidden)
+        # if not len(self.child_sprites) and not len(self.child_sprites_hidden):
+        #     return
+        get_rect = lambda child: pygame.Rect(
+            child.pos[0], child.pos[1],
+            child.size[0], child.size[1],
+        )
+        rects = [get_rect(child) for child in self.child_sprites]
+        # print(rects)
+        skip_sprites = False
+        if rects:
+            rect = rects[0]
+            rect.unionall_ip(rects)
+        else:
+            rect = pygame.Rect(0, 0, 1, 1)
+            skip_sprites = True
+        # print(rect)
 
-            # Create surface to draw on.
-            # image = pygame.Surface((rect.w, rect.h), pygame.locals.SRCALPHA).convert_alpha()
-            vault = GeneratedVault()
-            image = vault.generate_surface(*rect.size)
-            # image.fill((255, 255, 255, 128))
+        # Create surface to draw on.
+        # image = pygame.Surface((rect.w, rect.h), pygame.locals.SRCALPHA).convert_alpha()
+        vault = GeneratedVault()
+        image = vault.generate_surface(*rect.size)
+        image.fill((0, 0, 0, 0))
+        # image.fill((255, 255, 255, 128))
 
-            if not skip_sprites:
-                # Draw sprites on surface.
-                for child in self.child_sprites:
-                    # Skip empty or uninitialized sprites.
-                    if child.size == (0, 0):
-                        continue
-                    # print(child, child.frame)
-                    frame = child.frame
-                    gamma = str(frame['current_gamma'])
-                    surface = frame['surfaces'][gamma]
-                    pos = child.pos[0] - rect.x, child.pos[1] - rect.y
-                    # print(surface, pos)
-                    image.blit(surface, pos, surface.get_rect())
-                    child.is_drawable = False
-            else:
-                for child in self.child_sprites:
-                    child.is_drawable = False
+        if not skip_sprites:
+            # Draw sprites on surface.
+            for child in self.child_sprites:
+                child.is_drawable = False
+                # Skip empty or uninitialized sprites.
+                if child.size == (0, 0):
+                    continue
+                # print(child, child.frame)
+                frame = child.frame
+                gamma = str(frame['current_gamma'])
+                surface = frame['surfaces'][gamma]
+                pos = child.pos[0] - rect.x, child.pos[1] - rect.y
+                # print(surface, pos)
+                image.blit(surface, pos, surface.get_rect())
+            for child in self.child_sprites_hidden:
+                child.is_drawable = False
+        else:
+            for child in chain(self.child_sprites, self.child_sprites_hidden):
+                child.is_drawable = False
 
-            # Generate final sprite.
-            sprite = vault.add_sprite('default')
-            action = sprite.add_action('none')
-            action.add_frame((0, 0, rect.w, rect.h), (0, 0), (0, 0))
-            sprite = Sprite.make(vault)
+        # Generate final sprite.
+        sprite = vault.add_sprite('default')
+        action = sprite.add_action('none')
+        action.add_frame((0, 0, rect.w, rect.h), (0, 0), (0, 0))
+        sprite = Sprite.make(vault)
 
-            # Set it up.
-            sprite.pos = (rect.x, rect.y)
-            sprite.add_to(self)
+        # Set it up.
+        sprite.pos = (rect.x, rect.y)
+        sprite.add_to(self)
 
-            # And save it.
-            self.cached_representation = sprite
-            self.cached_representation_dirty = False
+        # And save it.
+        self.cached_representation = sprite
+        self.cached_representation_dirty = False
 
     # @time
     def _rebuild_cached_representation(self):
-        if type(self.cached_representation) is Sprite:
-            # TODO should just update part of the surface instead of rebuild.
-            self.cached_representation.remove_from_parent()
-            self.cached_representation = True
+        if type(self.cached_representation) is not Sprite:
+            return
+
+        self.remove(self.cached_representation)
+        self._create_cached_representation()
+        self.cached_representation.update()
 
     def update(self):
         if self.parent_node is None:

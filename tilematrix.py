@@ -359,7 +359,8 @@ class TileMatrixSector(Node):
 
     def __init__(self, tilematrix, offset, sector, pos, tile_size, vaults, sprite_bin, show_coords):
         # TODO SPEED how can we start with tiles shown instead of hidden?
-        super(TileMatrixSector, self).__init__(name='TileMatrixSector%s' % str(pos))
+        name = 'TileMatrixSector%s' % str(pos)
+        super(TileMatrixSector, self).__init__(name=name)
         # print '__init__(%s)' % self
         self.__tilematrix = proxy(tilematrix)
         self.__offset = offset
@@ -406,7 +407,7 @@ class TileMatrixSector(Node):
                             tile = sprite_make(vault, s_id)
                             tile.matrix_id = id
                         tile.pos = offset[0] + t_w * x, offset[1] + t_h * y
-                        tile.hide()
+                        # tile.hide()  # Do not hide with cached nodes.
                         # print tile.pos, tile.pos_real_in_tree
                         try:
                             all_sprites[id].append(tile)
@@ -433,17 +434,28 @@ class TileMatrixSector(Node):
                     layer = self.__tilematrix.get_layer(z)
                     if layer is None:
                         layer = self.__tilematrix.add_layer(z)
-                    layer.add_children([item[1] for item in items])
-                    self.hidden_tiles |= set(items)
-        self.cached_representation = True
+                    root_node = layer.find_node(name)
+                    if root_node is None:
+                        root_node = Node(name=name)
+                        root_node.order_matters = False
+                        root_node.set_caching(True)
+                        # root_node.pos = offset
+                        root_node.add_to(layer)
+                        # print 1, self.__offset
+                    root_node.add_children([item[1] for item in items])
+                    # self.hidden_tiles |= set(items)  # Do not hide with cached nodes.
 
     def remove_from_parent(self, cascade=True):
         # print 'remove_from_parent(%s)' % self
         groups = group_by(chain(*self.__sector_map.itervalues()), key=lambda item: item[0], val=lambda item: item[1])
         layers = self.get_layers()
+        name = self.name
         for z, children in groups.iteritems():
             # print z, children
-            layers[z].remove_children(children)
+            # layers[z].remove_children(children)
+            node = layers[z].find_node(name)
+            if node is not None:
+                layers[z].remove(node, cascade=True)
         self.__sector_map.clear()
         self.__all_sprites.clear()
         self.hidden_tiles.clear()
@@ -455,9 +467,13 @@ class TileMatrixSector(Node):
         # print 'on_node_removed(%s)' % self
         groups = group_by(chain(*self.__sector_map.itervalues()), key=lambda item: item[0], val=lambda item: item[1])
         layers = self.get_layers()
+        name = self.name
         for z, children in groups.iteritems():
             # print z, children
-            layers[z].remove_children(children)
+            # layers[z].remove_children(children)
+            node = layers[z].find_node(name)
+            if node is not None:
+                layers[z].remove(node, cascade=True)
         self.__sector_map.clear()
         self.__all_sprites.clear()
         self.hidden_tiles.clear()
@@ -499,7 +515,7 @@ class TileMatrixSector(Node):
         if tile is not None:
             id_ = tile.matrix_id
             # print '*', tile
-            layer.remove(tile)
+            layer.find_node(self.name).remove(tile)
             # Remove from all sprites registry.
             all_sprites = self.__all_sprites
             all_sprites[id_].remove(tile)
@@ -538,8 +554,16 @@ class TileMatrixSector(Node):
                 layer = self.__tilematrix.get_layer(z)
                 if layer is None:
                     layer = self.__tilematrix.add_layer(z)
+            root_node = layer.find_node(self.name)
+            if root_node is None:
+                root_node = Node(name=self.name)
+                root_node.order_matters = False
+                root_node.set_caching(True)
+                # root_node.set_pos = self.__offset
+                # print 2, self.__offset
+                root_node.add_to(layer)
             # Add tile to layer.
-            tile.add_to(layer)
+            tile.add_to(root_node)
             if hide:
                 self.hidden_tiles |= set([tile])
             else:
@@ -549,7 +573,7 @@ class TileMatrixSector(Node):
         # print tile
 
         # Drop layer if empty.
-        if layer is not None and len(layer.get_all_sprites()) == 0:
+        if layer is not None and len(layer.find_node(self.name).get_all_sprites()) == 0:
             # print 'remove layer', z
             # layer.parent_node.remove(layer, cascade=True)
             self.__tilematrix.remove_layer(z)
@@ -571,7 +595,7 @@ class TileMatrixSector(Node):
         layers = self.get_layers()
         # print layers
         for z, children in groups.iteritems():
-            layers[z].show_children(children)
+            layers[z].find_node(self.name).show_children(children)
 
     def hide_children(self, children):
         self.hidden_tiles |= set(children)
@@ -584,7 +608,7 @@ class TileMatrixSector(Node):
         layers = self.get_layers()
         # print layers
         for z, children in groups.iteritems():
-            layers[z].hide_children(children)
+            layers[z].find_node(self.name).hide_children(children)
 
     def set_alpha_of_layer(self, z, value):
         layers = self.get_layers()
@@ -740,6 +764,9 @@ class TileMatrix(Node):
         if self.clipping_region_inherited is None:
             return
 
+        # TODO do not show or hide with cached nodes.
+        return
+
         # print '******'
         t_w, t_h = self.__tile_size
         clipping_region = self.clipping_region_inherited
@@ -804,6 +831,7 @@ class TileMatrix(Node):
             shown_coords = all_coords - clipped_coords
             # print 'clipped coords:', clipped_coords
             # print 'shown coords:', shown_coords
+            # shown_coords = all_coords
 
             to_be_shown = set(chain(*[sector_map.get(coord, dict()) for coord in shown_coords]))
             # print 'to_be_shown =', to_be_shown
