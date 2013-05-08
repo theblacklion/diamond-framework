@@ -130,6 +130,9 @@ class Sprite(object):
         if hard:
             if self.frames:
                 self.set_action(self.default_action, hard=True)
+        if self.parent_node and self.parent_node.cached_representation:
+            # print 'unlink', self, self.display
+            self.parent_node.cached_representation = True
         if self.display:
             self.detach_from_display(unload=False)
         self.parent_node = None

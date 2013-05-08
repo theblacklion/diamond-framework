@@ -929,7 +929,7 @@ class TileMatrix(Node):
         current_keys = set(sectors_to_display.keys())
 
         if last_keys == current_keys:
-            self.__update_tile_visibility()
+            # self.__update_tile_visibility()
             return
 
         # Catch deleted sprites in temporary bin for eventual re-use.
@@ -1009,7 +1009,7 @@ class TileMatrix(Node):
                 # TODO can we somehow sync animations of same tiles?
 
         self.__last_visible_sectors = sectors_to_display
-        self.__update_tile_visibility()
+        # self.__update_tile_visibility()
 
     def get_tile_id_at(self, x, y, z=None):
         value = self.__matrix.get_point(x, y, z)
@@ -1117,7 +1117,7 @@ class TileMatrix(Node):
                             #     print 'POINT SET!'
                             for key, val in value.iteritems():
                                 set_sprite_at(x, y, key, val, hide=not is_visible(sector, x, y))
-            self.__update_tile_visibility()
+            # self.__update_tile_visibility()
         else:
             # print 'set to none.'
             # Remove default tiles from sectors.
@@ -1149,7 +1149,7 @@ class TileMatrix(Node):
                             for z, sprite in sprites:
                                 set_sprite_at(x, y, z, None)
             self.__matrix.set_default_value(None)
-            self.__update_tile_visibility()
+            # self.__update_tile_visibility()
 
     def on_node_added(self, *args, **kwargs):
         super(TileMatrix, self).on_node_added(*args, **kwargs)
