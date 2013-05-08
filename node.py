@@ -533,7 +533,7 @@ class Node(object):
             items = [SlicableSet([self.cached_representation])]
         else:
             items = [self.child_sprites]
-        items = [self.child_sprites]
+        # items = [self.child_sprites]
         if self.cached_tree_dirty:
             # print self
             # self.cached_tree = chain.from_iterable(child.get_tree_as_list() for child in self.child_nodes)
