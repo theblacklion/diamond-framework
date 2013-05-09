@@ -50,6 +50,7 @@ class Node(object):
         self.cached_tree_dirty = True
         self.cached_representation = None
         self.cached_representation_dirty = True
+        self.cached_representation_sprite_list = OrderedSet()
 
     def set_clipping_region(self, x, y, w, h):
         self.clipping_region = pygame.Rect(x, y, w, h)
@@ -86,6 +87,7 @@ class Node(object):
             self.child_nodes_hidden = OrderedSet(self.child_nodes_hidden)
             self.child_sprites = OrderedSet(self.child_sprites)
             self.child_sprites_hidden = OrderedSet(self.child_sprites_hidden)
+            self.cached_representation_sprite_list = OrderedSet(self.cached_representation_sprite_list)
             self.child_nodes_need_reorder = True
             self.child_sprites_need_reorder = True
         elif not bool and type(self.child_nodes) is not SlicableSet:
@@ -94,6 +96,7 @@ class Node(object):
             self.child_nodes_hidden = SlicableSet(self.child_nodes_hidden)
             self.child_sprites = SlicableSet(self.child_sprites)
             self.child_sprites_hidden = SlicableSet(self.child_sprites_hidden)
+            self.cached_representation_sprite_list = SlicableSet(self.cached_representation_sprite_list)
         self.__order_matters = bool
 
     order_matters = property(__get_order_matters, __set_order_matters)
@@ -107,6 +110,7 @@ class Node(object):
                 # TODO correctly remove sprite and restore children
 
                 self.cached_representation = None
+                self.cached_representation_sprite_list.clear()
 
     # @time
     def on_node_added(self, display, node=None, hard=True):
@@ -227,6 +231,7 @@ class Node(object):
         self.child_sprites_hidden.clear()
         self.child_nodes.clear()
         self.child_nodes_hidden.clear()
+        self.set_cached_tree_is_dirty()
 
     # @time
     def remove(self, child, cascade=False, hard=True):
@@ -245,6 +250,7 @@ class Node(object):
         # Notify child that it has been unassigned and should setup itself properly.
         child.on_node_removed(node=self, hard=hard)
         # self.display.on_node_child_removed(child)  # TODO isn't this obsolete due to child.on_node_removed()?
+        self.set_cached_tree_is_dirty()
 
     # @time
     def remove_children(self, children, cascade=False):
@@ -529,11 +535,12 @@ class Node(object):
             self.child_sprites = child_nodes_type(sorted(self.child_sprites, key=self.__sprite_cmp_key, reverse=False))
             self.child_sprites_need_reorder = False
             self.cached_tree_dirty = True
-        if type(self.cached_representation) is Sprite:
-            items = [SlicableSet([self.cached_representation])]
+        if self.cached_representation is True:
+            self._create_cached_representation()
+        if self.cached_representation_sprite_list:
+            items = [self.cached_representation_sprite_list]
         else:
             items = [self.child_sprites]
-        # items = [self.child_sprites]
         if self.cached_tree_dirty:
             # print self
             # self.cached_tree = chain.from_iterable(child.get_tree_as_list() for child in self.child_nodes)
@@ -593,6 +600,8 @@ class Node(object):
             #     self.child_sprites_need_reorder = True
             if self.track_movement:
                 event.emit('node.moved', self)
+            return True
+        return False
 
     def update_real_pos_in_tree(self):
         self.pos_real_is_dirty = True
@@ -681,6 +690,7 @@ class Node(object):
 
     # @time
     def _create_cached_representation(self):
+        # TODO exclude animated sprites.
         # Gather range of child sprites.
         # print(self.child_sprites, len(self.child_sprites), self.child_sprites_hidden)
         # if not len(self.child_sprites) and not len(self.child_sprites_hidden):
@@ -740,6 +750,9 @@ class Node(object):
         # And save it.
         self.cached_representation = sprite
         self.cached_representation_dirty = False
+        list_type = type(self.cached_representation_sprite_list)
+        self.cached_representation_sprite_list = list_type([self.cached_representation])
+        self.set_cached_tree_is_dirty()
 
     # @time
     def _rebuild_cached_representation(self):
