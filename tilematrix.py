@@ -640,10 +640,10 @@ class TileMatrix(Node):
         self.__matrix = matrix
 
         self.__listeners = [
-            event.add_listener(self.update_sectors, 'node.moved',
-                               instance__is=self),
-            event.add_listener(self.update_sectors, 'node.attached',
-                               instance__is=self)
+            # event.add_listener(self.update_sectors, 'node.moved',
+            #                    instance__is=self),
+            # event.add_listener(self.update_sectors, 'node.attached',
+            #                    instance__is=self)
         ]
 
         # TODO Implement some kind of monitoring and GC for this.
@@ -652,7 +652,7 @@ class TileMatrix(Node):
         self.order_matters = True  # We just keep this in order for our layers.
 
         self.show_sector_coords = False
-        self.track_movement = True
+        # self.track_movement = True
 
         self.__sector_node = Node('TileMatrixSectors')
         self.__sector_node.order_matters = False
@@ -662,6 +662,14 @@ class TileMatrix(Node):
     def __del__(self):
         event.remove_listeners(self.__listeners)
         super(TileMatrix, self).__del__()
+
+    def _update_real_pos_in_tree(self, *args, **kwargs):
+        if super(TileMatrix, self)._update_real_pos_in_tree(*args, **kwargs):
+            self.update_sectors()
+
+    def attach_to_display(self, *args, **kwargs):
+        super(TileMatrix, self).attach_to_display(*args, **kwargs)
+        self.update_sectors()
 
     def load_vault(self, vault, alias):
         self.__vaults[alias] = vault
