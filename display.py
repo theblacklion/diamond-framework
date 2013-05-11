@@ -4,6 +4,10 @@
 # @copyright Oktay Acikalin
 # @license   MIT (LICENSE.txt)
 
+# TODO Try to split display list into chunks so that we have drawable groups.
+#      Next try to find out which list and group has changed and rebuilt it.
+#      This should give us some reduced overhead talking with opengl.
+
 import os
 from math import sin, cos, radians
 from itertools import chain
@@ -302,6 +306,7 @@ class TextureDl(object):
                 # height = self.height
             # glScalef(width/(self.width*1.0), height/(self.height*1.0), 1.0)
 
+        glColor4f(1.0, 1.0, 1.0, 1.0)
         glEndList()
 
     def __del__(self):
@@ -536,7 +541,7 @@ class Display(object):
     def set_gl_clear_color(self, r, g, b, a):
         self.gl_clear_color = (r, g, b, a)
         glClearColor(*self.gl_clear_color)
-        self.is_dirty = True
+        self.drawables_dl_dirty = True
 
     def get_root_node(self):
         return self.root_node
@@ -758,7 +763,12 @@ class Display(object):
         if self.is_dirty:
             self.is_dirty = False
             glCallList(self._drawables_dl)
+            # flip() may reduce FPS to e.g. 60 if vsync is enabled.
             pygame.display.flip()
+        is_idle = self.clock.get_time() <= int(round(1000.0 / self.framerate))
+        if is_idle:
+            # print 'do some idle tasks'
+            event.emit('display.update.cpu_is_idle', self)
         self.clock.tick(self.framerate)
 
     def is_fullscreen(self):
