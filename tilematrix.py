@@ -357,7 +357,7 @@ class TileMatrixSector(Node):
             # print vault, s_id
         return vault, s_id
 
-    def __init__(self, tilematrix, offset, sector, pos, tile_size, vaults, sprite_bin, show_coords):
+    def __init__(self, tilematrix, offset, sector, pos, tile_size, vaults, sprite_bin, show_coords, use_caching):
         # TODO SPEED how can we start with tiles shown instead of hidden?
         name = 'TileMatrixSector%s' % str(pos)
         super(TileMatrixSector, self).__init__(name=name)
@@ -372,6 +372,7 @@ class TileMatrixSector(Node):
         self.shown_tiles = set()
         self.__vaults = vaults
         self.__tile_size = tile_size
+        self.__use_caching = use_caching
         # print sector
         # print pos, tile_size
         if show_coords:
@@ -438,7 +439,8 @@ class TileMatrixSector(Node):
                     if root_node is None:
                         root_node = Node(name=name)
                         root_node.order_matters = False
-                        root_node.set_caching(True)
+                        if use_caching:
+                            root_node.set_caching(True)
                         # root_node.pos = offset
                         root_node.add_to(layer)
                         # print 1, self.__offset
@@ -497,7 +499,7 @@ class TileMatrixSector(Node):
         return self.__sector_map.get((x, y), [])
 
     # @time
-    def set_sprite_at(self, x, y, z, id, hide=True):
+    def set_sprite_at(self, x, y, z, id, hide=True, is_cacheable=True):
         # print 'set_sprite_at(%s, %d, %d, %d, %s)' % (self, x, y, z, id)
         groups = dict(self.__sector_map.get((x, y), {}))
         # print groups
@@ -510,12 +512,21 @@ class TileMatrixSector(Node):
         layer = self.__tilematrix.get_layer(z)
         if layer is None:
             layer = self.__tilematrix.add_layer(z)
+        root_node = layer.find_node(self.name)
+        if root_node is None:
+            root_node = Node(name=self.name)
+            root_node.order_matters = False
+            if self.__use_caching:
+                root_node.set_caching(True)
+            # root_node.set_pos = self.__offset
+            # print 2, self.__offset
+            root_node.add_to(layer)
 
         # Remove existing tile?
         if tile is not None:
             id_ = tile.matrix_id
             # print '*', tile
-            layer.find_node(self.name).remove(tile)
+            root_node.remove(tile)
             # Remove from all sprites registry.
             all_sprites = self.__all_sprites
             all_sprites[id_].remove(tile)
@@ -531,6 +542,7 @@ class TileMatrixSector(Node):
         if id is not None:
             vault, s_id = self.__split_vault_and_id_from_path(id)
             tile = Sprite.make(vault, s_id)
+            tile.is_cacheable = is_cacheable
             tile.matrix_id = id
             t_w, t_h = self.__tile_size
             tile.pos = self.__offset[0] + t_w * x, self.__offset[1] + t_h * y
@@ -549,19 +561,6 @@ class TileMatrixSector(Node):
                 sector_map[key].append((z, tile))
             except KeyError:
                 sector_map[key] = [(z, tile)]
-            # Create missing layers if necessary.
-            if layer is None:
-                layer = self.__tilematrix.get_layer(z)
-                if layer is None:
-                    layer = self.__tilematrix.add_layer(z)
-            root_node = layer.find_node(self.name)
-            if root_node is None:
-                root_node = Node(name=self.name)
-                root_node.order_matters = False
-                root_node.set_caching(True)
-                # root_node.set_pos = self.__offset
-                # print 2, self.__offset
-                root_node.add_to(layer)
             # Add tile to layer.
             tile.add_to(root_node)
             if hide:
@@ -573,10 +572,10 @@ class TileMatrixSector(Node):
         # print tile
 
         # Drop layer if empty.
-        if layer is not None and len(layer.find_node(self.name).get_all_sprites()) == 0:
-            # print 'remove layer', z
-            # layer.parent_node.remove(layer, cascade=True)
-            self.__tilematrix.remove_layer(z)
+        # if layer is not None and len(layer.find_node(self.name).get_all_sprites()) == 0:
+        #     # print 'remove layer', z
+        #     # layer.parent_node.remove(layer, cascade=True)
+        #     self.__tilematrix.remove_layer(z)
 
     def get_sector_map(self):
         return self.__sector_map
@@ -653,6 +652,7 @@ class TileMatrix(Node):
 
         self.show_sector_coords = False
         # self.track_movement = True
+        self.use_caching = True
 
         self.__sector_node = Node('TileMatrixSectors')
         self.__sector_node.order_matters = False
@@ -737,6 +737,14 @@ class TileMatrix(Node):
                         self.load_matrix(val)
                     else:
                         raise Exception('Unknown key for section matrix found: %s' % key)
+            elif section == 'layer.order_change':
+                for z, new_z in config.items('layer.order_change'):
+                    z = int(z)
+                    new_z = int(new_z)
+                    try:
+                        self.__layer_config[z]['reorder'] = new_z
+                    except KeyError:
+                        self.__layer_config[z] = dict(reorder=new_z)
             # We just ignore unknown sections.
             # else:
             #     raise Exception('Unknown section in config file found: %s' % section)
@@ -1005,7 +1013,7 @@ class TileMatrix(Node):
                 #             print 'found wrong sprite %s in bin %s.' % (val.matrix_id, key)
                 #             exit()
                 offset = pos[0] * sp_w, pos[1] * sp_h
-                sector_ = TileMatrixSector(self, offset, self.__matrix.get_rect(*rect), pos, self.__tile_size, self.__vaults, sprite_bin, self.show_sector_coords)
+                sector_ = TileMatrixSector(self, offset, self.__matrix.get_rect(*rect), pos, self.__tile_size, self.__vaults, sprite_bin, self.show_sector_coords, self.use_caching)
                 sector_.pos = offset
                 # print sector_.pos
                 # Only attach sector_ if really necessary.
@@ -1052,7 +1060,7 @@ class TileMatrix(Node):
         # TODO SPEED decide if tile is visible or not. see __update_tile_visibility for reference.
         return True
 
-    def set_tile_at(self, x, y, z, id):
+    def set_tile_at(self, x, y, z, id, is_cacheable=True):
         new_point_data = (x, y, z, id)
         sector = self._get_tile_sector_at(x, y)
         if sector is not None:
@@ -1062,29 +1070,29 @@ class TileMatrix(Node):
             x -= s_x * s_w
             y -= s_y * s_h
             is_visible = self._is_tile_visible
+            get_sprites_at = sector.get_sprites_at
+            set_sprite_at = sector.set_sprite_at
             # TODO Move the removal of the default tile into the sector.set_sprite_at.
             if id is not None:
                 # Check if default value has been set and remove it.
-                sprites = sector.get_sprites_at(x, y)
+                sprites = get_sprites_at(x, y)
                 point = self.__matrix.get_point(*new_point_data[:2])
                 # print '***', sprites, point
                 if sprites and not point:
-                    set_sprite_at = sector.set_sprite_at
                     for z_, sprite in sprites:
-                        set_sprite_at(x, y, z_, None)
+                        set_sprite_at(x, y, z_, None, is_cacheable=is_cacheable)
                 # Set new tile.
-                sector.set_sprite_at(x, y, z, id, hide=not is_visible(sector, x, y))
+                set_sprite_at(x, y, z, id, hide=not is_visible(sector, x, y), is_cacheable=is_cacheable)
             else:
                 # Drop old tile.
-                sector.set_sprite_at(x, y, z, None)
-                sprites = sector.get_sprites_at(x, y)
+                set_sprite_at(x, y, z, None, is_cacheable=is_cacheable)
+                sprites = get_sprites_at(x, y)
                 # Place default value if nothing left.
                 if not sprites:
                     default_value = self.__matrix.get_default_value()
                     if default_value is not None:
-                        set_sprite_at = sector.set_sprite_at
                         for key, val in default_value.iteritems():
-                            set_sprite_at(x, y, key, val, hide=not is_visible(sector, x, y))
+                            set_sprite_at(x, y, key, val, hide=not is_visible(sector, x, y), is_cacheable=is_cacheable)
             # self.__update_tile_visibility()
         # else:
         #     raise SectorNotAvailableException()
@@ -1191,7 +1199,13 @@ class TileMatrix(Node):
             raise Exception('Layer does alreay exist: %s' % z)
         layer = Node(name='TileMatrixLayer[%d]' % z)
         layer.order_matters = False
-        layer.set_order_pos(z)
+        if z in self.__layer_config:
+            order = self.__layer_config[z].get('reorder', z)
+            # print self.__layer_config
+        else:
+            order = z
+        # print z, order
+        layer.set_order_pos(order)
         layer.add_to(self)
         try:
             alpha = self.__layer_config[z]['alpha']

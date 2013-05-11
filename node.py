@@ -717,9 +717,14 @@ class Node(object):
         image.fill((0, 0, 0, 0))
         # image.fill((255, 255, 255, 128))
 
+        repr_list = []
+
         if not skip_sprites:
             # Draw sprites on surface.
             for child in self.child_sprites:
+                if not child.is_cacheable:
+                    repr_list.append(child)
+                    continue
                 child.is_drawable = False
                 # Skip empty or uninitialized sprites.
                 if child.size == (0, 0):
@@ -735,10 +740,13 @@ class Node(object):
                 child.is_drawable = False
         else:
             for child in chain(self.child_sprites, self.child_sprites_hidden):
+                if not child.is_cacheable:
+                    repr_list.append(child)
+                    continue
                 child.is_drawable = False
 
         # Generate final sprite.
-        sprite = vault.add_sprite('default')
+        sprite = vault.add_sprite('cached node')
         action = sprite.add_action('none')
         action.add_frame((0, 0, rect.w, rect.h), (0, 0), (0, 0))
         sprite = Sprite.make(vault)
@@ -748,10 +756,11 @@ class Node(object):
         sprite.add_to(self)
 
         # And save it.
+        repr_list.append(sprite)
         self.cached_representation = sprite
         self.cached_representation_dirty = False
         list_type = type(self.cached_representation_sprite_list)
-        self.cached_representation_sprite_list = list_type([self.cached_representation])
+        self.cached_representation_sprite_list = list_type(repr_list)
         self.set_cached_tree_is_dirty()
 
     # @time

@@ -55,6 +55,7 @@ class Sprite(object):
         self.is_attached = False
         self.is_animation_paused = False
         self.is_drawable = True
+        self.is_cacheable = True
         self.listeners = [
             event.add_listener(self.display_screen_dropped_event, 'display.screen.dropped'),
             event.add_listener(self.display_screen_created_event, 'display.screen.created')
@@ -132,7 +133,7 @@ class Sprite(object):
                 self.set_action(self.default_action, hard=True)
         if self.parent_node and self.parent_node.cached_representation:
             # print 'unlink', self, self.display
-            self.parent_node.cached_representation = True
+            self.parent_node.cached_representation_dirty = True
         if self.display:
             self.detach_from_display(unload=False)
         self.parent_node = None
