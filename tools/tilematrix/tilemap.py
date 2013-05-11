@@ -29,6 +29,8 @@ class TilemapScene(Scene):
         fps_node.set_order_pos(1000)
         fps = Fps(ticker=self.ticker, details=True)
         fps.set_alpha(75)
+        fps.set_background_color(0, 0, 0, 230)
+        fps.set_background_border(3)
         fps.add_to(fps_node)
         fps.set_align_box(screen_width, 0, 'right')
         self.fps = fps
