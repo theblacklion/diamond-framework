@@ -23,7 +23,7 @@ class Selection(object):
 
     def add_tilematrix(self, tilematrix):
         t_w, t_h = tilematrix.get_tile_size()
-        selection_box = SpritePrimitives.make_rectangle(t_w + 2, t_h + 2, color=(255, 255, 255, 192), background=(255, 255, 255, 96), hotspot=(1, 1))
+        selection_box = SpritePrimitives.make_rectangle(t_w + 2, t_h + 2, color=(255, 255, 255, 192), background=(255, 255, 255, 96), sprite_name='selection', hotspot=(1, 1))
         selection_vault = selection_box.vault.get_vault()
         tilematrix.load_vault(selection_vault, 'selection')
         self.selection[tilematrix.name] = OrderedDict()
@@ -60,7 +60,7 @@ class Selection(object):
             # print 'ids =', id
             if self.skip_empty_tiles and not id:
                 continue
-            tilematrix.set_tile_at(x, y, z, 'selection/default')
+            tilematrix.set_tile_at(x, y, z, 'selection/selection', is_cacheable=False)
             if z in id:
                 del id[z]
             selection[(x, y)] = id
