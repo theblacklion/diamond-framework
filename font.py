@@ -222,6 +222,8 @@ class Font(Sprite):
         sprite = vault_.add_sprite(self.font.name)
         super(Font, self).__init__(vault=sprite)
         self.text_is_dirty = False
+        self.bg_color = None
+        self.bg_border_size = 0
         self.__update_text()
 
     def __repr__(self):
@@ -236,11 +238,26 @@ class Font(Sprite):
         vault = self.vault
         surface = self.font.render(self._text)
         size = surface.get_size()
-        rect = (0, 0, size[0], size[1])
+        bg_color = self.bg_color
+        bg_border = self.bg_border_size
+        rect = (0, 0, size[0] + (bg_border * 2), size[1] + (bg_border * 2))
         hotspot = (0, 0)
         delta = (0, 0)
         msecs = 0
-        vault.get_vault().set_surface(surface)
+        if bg_color or bg_border:
+            image = vault.get_vault().generate_surface(
+                size[0] + (bg_border * 2),
+                size[1] + (bg_border * 2),
+            )
+            if bg_color:
+                image.fill(bg_color)
+            else:
+                image.fill((0, 0, 0, 0))
+            image.blit(surface, (bg_border, bg_border))
+            surface = image
+            vault.get_vault().set_surface(surface)
+        else:
+            vault.get_vault().set_surface(surface)
         vault.clear_actions()
         action = vault.add_action('none')
         frame_vault = action.add_frame(rect, hotspot, delta, msecs)
@@ -280,6 +297,16 @@ class Font(Sprite):
 
     def set(self, data):
         self.set_text(str(data))
+
+    def set_background_color(self, r, g, b, a):
+        self.bg_color = (r, g, b, a)
+        self.text_is_dirty = True
+        self._add_to_update_list()
+
+    def set_background_border(self, size=5):
+        self.bg_border_size = size
+        self.text_is_dirty = True
+        self._add_to_update_list()
 
     def get_text(self):
         return self._text
