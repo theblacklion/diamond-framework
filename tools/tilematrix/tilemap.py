@@ -14,6 +14,7 @@ from diamond import event
 from diamond.ticker import Ticker
 from diamond.node import Node
 from diamond.fps import Fps
+from diamond.font import Font
 from diamond.decorators import dump_args, time
 
 from diamond.tools.tilematrix.selection import Selection
@@ -33,7 +34,20 @@ class TilemapScene(Scene):
         fps.set_background_border(3)
         fps.add_to(fps_node)
         fps.set_align_box(screen_width, 0, 'right')
-        self.fps = fps
+
+    def __setup_layer_hud(self):
+        screen_width = self.scene_manager.display.screen_size[0]
+        node = Node('layer hud node')
+        node.order_matters = False
+        node.add_to(self.root_node)
+        node.set_order_pos(1000)
+        hud = Font()
+        hud.set_alpha(75)
+        hud.set_background_color(0, 0, 0, 230)
+        hud.set_background_border(3)
+        hud.add_to(node)
+        hud.set_align_box(screen_width, 0, 'center')
+        self.layer_hud = hud
 
     def setup(self, shared_data):
         super(TilemapScene, self).setup()
@@ -44,6 +58,7 @@ class TilemapScene(Scene):
         self.bind(self.ticker)
 
         self.__setup_fps()
+        self.__setup_layer_hud()
 
         tilematrix = TileMatrix()
         tilematrix.load_config(shared_data['config_file'])
@@ -97,10 +112,14 @@ class TilemapScene(Scene):
             event.add_listener(self.__on_change_bg_color_keyup_event, 'scene.event.system',
                                context__scene__is=self,
                                context__event__type__eq=pygame.locals.KEYUP,
-                               context__event__key__in=(pygame.locals.K_1,
-                                    pygame.locals.K_2, pygame.locals.K_3,
-                                    pygame.locals.K_4, pygame.locals.K_5,
-                                    pygame.locals.K_6, pygame.locals.K_7)),
+                               context__event__key__in=(
+                                   pygame.locals.K_2,
+                                   pygame.locals.K_1,
+                                   pygame.locals.K_3,
+                                   pygame.locals.K_4,
+                                   pygame.locals.K_5,
+                                   pygame.locals.K_6,
+                                   pygame.locals.K_7)),
             event.add_listener(self.__on_undo_keyup_event, 'scene.event.system',
                                context__scene__is=self,
                                context__event__type__eq=pygame.locals.KEYUP,
@@ -118,7 +137,7 @@ class TilemapScene(Scene):
         )
 
     def __on_debug_event(self, context):
-        print context
+        print(context)
 
     def __on_switch_scene_keyup_event(self, context):
         self.scene_manager.hide_scene('tilemap')
@@ -171,7 +190,7 @@ class TilemapScene(Scene):
             selection = self.selection.get_selection(self.tilematrix.name)
             # print 'selection =', selection
             fill_pool = self.shared_data['selection']
-            print 'fill_pool =', fill_pool
+            print('fill_pool =', fill_pool)
 
             self.selection.clear_selection(self.tilematrix.name)
 
@@ -204,7 +223,7 @@ class TilemapScene(Scene):
             first_point = fill_points.values()[0]
             if len(fill_points) == 1 and len(selection_points) > 1 and first_point is not None and first_point.startswith(':') and first_point.endswith(':inner'):
                 autotile_group_id = first_point[len(': :'):-len(':inner')]
-                print 'autotile_group_id =', autotile_group_id
+                print('autotile_group_id =', autotile_group_id)
                 if first_point.startswith(':A:'):
                     for s_x, s_y in selection_points:
                         id = None
@@ -252,7 +271,7 @@ class TilemapScene(Scene):
     def use_layer(self, layer_name_index):
         if layer_name_index >= 0 and layer_name_index < len(self.layer_names):
             self.tilematrix_z = self.layer_names[layer_name_index][0]
-            print 'Using layer:', self.layer_names[layer_name_index]
+            self.layer_hud.set_text('Current layer: %d %s' % self.layer_names[layer_name_index])
             self.layer_name_index = layer_name_index
             layer = self.layer_names[layer_name_index][0]
             for z, name in self.layer_names:
@@ -264,7 +283,7 @@ class TilemapScene(Scene):
                 else:
                     self.tilematrix.set_alpha_of_layer(z, 30)
         elif layer_name_index == -1:
-            print 'Showing all layers.'
+            self.layer_hud.set_text('Showing all layers.')
             self.layer_name_index = layer_name_index
             for z, name in self.layer_names:
                 # print z, name
