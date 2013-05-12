@@ -138,13 +138,13 @@ class Node(object):
     def __repr__(self):
         pos = '%d,%d' % self.pos
         try:
-            pos_real_in_tree = '%d,%d' % self.pos_real_in_tree
+            pos_real_in_tree = ' => %d,%dr' % self.pos_real_in_tree
         except TypeError:
-            pos_real_in_tree = 'None'
+            pos_real_in_tree = ''
         if self.name:
-            name = 'Node(%s@%s => %s)' % (self.name, pos, pos_real_in_tree)
+            name = 'Node(%s@%sv%s)' % (self.name, pos, pos_real_in_tree)
         else:
-            name = 'Node(@%s => %s)' % (pos, pos_real_in_tree)
+            name = 'Node(@%sv%s)' % (pos, pos_real_in_tree)
         # if self.parent_node:
         #     return '%s -> %s' % (self.parent_node, name)
         # else:
