@@ -160,7 +160,11 @@ class Sprite(object):
 
     def __repr__(self):
         pos = '%s,%s' % self.pos
-        name = 'Sprite(%s.%s@%s)' % (self.vault.name, self.__hash__(), pos)
+        try:
+            pos_real_in_tree = ' => %d,%dr' % self.pos_real_in_tree
+        except TypeError:
+            pos_real_in_tree = ''
+        name = 'Sprite(%s.%s@%sv%s)' % (self.vault.name, self.__hash__(), pos, pos_real_in_tree)
         # if self.parent_node:
         #     return '<%s -> %s>' % (self.parent_node, name)
         return '<%s>' % name
