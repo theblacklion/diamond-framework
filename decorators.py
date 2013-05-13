@@ -10,6 +10,8 @@ from functools import wraps
 
 from pygame.time import get_ticks
 
+time_stats = dict()
+
 
 def _get_func_and_arglist(fname, argnames, args_, kwargs_):
     for pos, arg in enumerate(args_):
@@ -33,13 +35,13 @@ def dump_args(func):
     @link http://wiki.python.org/moin/PythonDecoratorLibrary
     '''
     @wraps(func)
-    def wrapper(*args,**kwargs):
+    def wrapper(*args, **kwargs):
         argnames = func.func_code.co_varnames[:func.func_code.co_argcount]
         fname = func.func_name
         args_ = list(args)
         kwargs_ = kwargs.copy()
         func_name, items = _get_func_and_arglist(fname, argnames, args_, kwargs_)
-        print '%s(%s)' % (func_name, ', '.join(items))
+        print('%s(%s)' % (func_name, ', '.join(items)))
         return func(*args, **kwargs)
     wrapper.__wrapped__ = func
     return wrapper
@@ -52,7 +54,7 @@ def time(func):
     @link http://wiki.python.org/moin/PythonDecoratorLibrary
     '''
     @wraps(func)
-    def wrapper(*args,**kwargs):
+    def wrapper(*args, **kwargs):
         argnames = func.func_code.co_varnames[:func.func_code.co_argcount]
         fname = func.func_name
         args_ = list(args)
@@ -74,8 +76,19 @@ def time(func):
         print '->', stop - start, 'msecs'
 
         for line in contents.rstrip().split('\n'):
-            print '  %s' % line
+            print('  %s' % line)
+
+        try:
+            time_stats[func_name].append(stop - start)
+        except KeyError:
+            time_stats[func_name] = [stop - start]
 
         return result
     wrapper.__wrapped__ = func
     return wrapper
+
+
+def print_time_stats():
+    for func, stats in time_stats.iteritems():
+        print('%s: min=%d, max=%d, avg=%d, count=%d' % (func,
+              min(*stats), max(*stats), sum(stats) / len(stats), len(stats)))
