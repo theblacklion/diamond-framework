@@ -632,7 +632,10 @@ class Display(object):
         # print self, obj
         with self.lock:
             try:
-                self.update_list.add(obj())
+                if isinstance(obj, Node):
+                    self.node_update_list.add(obj)
+                else:
+                    self.update_list.add(obj)
             except ReferenceError:
                 pass
 
@@ -642,7 +645,10 @@ class Display(object):
         # return
         if timestamp == 0 and rel_timestamp is None:
             with self.lock:
-                self.update_list.add(obj)
+                if isinstance(obj, Node):
+                    self.node_update_list.add(obj)
+                else:
+                    self.update_list.add(obj)
         else:
             if rel_timestamp is not None:
                 timestamp = self.ticker.get_ticks() + rel_timestamp
@@ -653,8 +659,7 @@ class Display(object):
     # @time
     def remove_from_update_list(self, obj):
         self.update_list.discard(obj)
-        if isinstance(obj, Node):
-            self.node_update_list.discard(obj)
+        self.node_update_list.discard(obj)
 
     # @time
     def rebuild_display_list(self):
@@ -663,7 +668,7 @@ class Display(object):
         self.display_list_dirty = False
         self.drawables_dirty = True
         # self.update_list = list(self.root_node.get_node_tree_as_list()) + self.display_list
-        self.node_update_list = self.root_node.get_node_tree_as_list()
+        # self.node_update_list = self.root_node.get_node_tree_as_list()
 
     # @time
     def rebuild_drawables(self):
@@ -742,11 +747,19 @@ class Display(object):
     # @time
     def update(self):
         if self.lock.acquire(False):
-            update_list = chain(self.node_update_list, self.update_list.copy())
+            update_list = chain(self.node_update_list.copy(), self.update_list.copy())
+            self.node_update_list.clear()
             self.update_list.clear()
             self.lock.release()
-            [item.update() for item in update_list]
-            # print 'updated %d items.' % len(update_list)
+            # [item.update() for item in update_list]
+            for item in update_list:
+                try:
+                    item.update()
+                except AttributeError:
+                    # print item
+                    # raise
+                    pass
+            # print('updated %d items.' % len(update_list))
         if self.__child_to_be_removed:
             # print 'removed child =', self.__child_to_be_removed
             self.__remove_child_from_lists()

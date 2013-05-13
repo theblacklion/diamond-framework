@@ -171,6 +171,9 @@ class Node(object):
         if self.display:
             self.display.on_node_child_added(self)
 
+        self.cached_representation_dirty = True
+        self._add_to_update_list()
+
     # @time
     def add_children(self, children):
         nodes = filter(lambda item: isinstance(item, Node), children)
@@ -214,7 +217,9 @@ class Node(object):
         # Notify display to rebuild DL.
         if self.display:
             self.display.on_node_children_added(nodes + sprites)
+
         self.cached_representation_dirty = True
+        self._add_to_update_list()
 
     # @dump_args
     def remove_all(self, cascade=True):
@@ -231,6 +236,8 @@ class Node(object):
         self.child_sprites_hidden.clear()
         self.child_nodes.clear()
         self.child_nodes_hidden.clear()
+        self.cached_representation_dirty = True
+        self._add_to_update_list()
         self.set_cached_tree_is_dirty()
 
     # @time
@@ -250,6 +257,8 @@ class Node(object):
         # Notify child that it has been unassigned and should setup itself properly.
         child.on_node_removed(node=self, hard=hard)
         # self.display.on_node_child_removed(child)  # TODO isn't this obsolete due to child.on_node_removed()?
+        self.cached_representation_dirty = True
+        self._add_to_update_list()
         self.set_cached_tree_is_dirty()
 
     # @time
@@ -284,6 +293,9 @@ class Node(object):
         # Notify display to rebuild DL.
         if self.display:
             self.display.on_node_children_removed(shown)
+
+        self.cached_representation_dirty = True
+        self._add_to_update_list()
 
     def remove_from_parent(self, cascade=True):
         self.parent_node.remove(self, cascade)
@@ -585,7 +597,7 @@ class Node(object):
                     self.parent_node.child_nodes_need_reorder = True
                     self.set_cached_tree_is_dirty()
             # Only update children which are not hidden!
-            [child.update_real_pos_in_tree() for child in self.child_nodes]
+            [child._update_real_pos_in_tree() for child in self.child_nodes]
             # Avoid function calls by not calling the childs method.
             # Keep in sync with Sprite._recalc_real_pos_in_tree !
             # [child._recalc_real_pos_in_tree() for child in self.child_sprites]
@@ -600,6 +612,8 @@ class Node(object):
             #     self.child_sprites_need_reorder = True
             if self.track_movement:
                 event.emit('node.moved', self)
+            # Now tell display to call us.
+            self._add_to_update_list()
             return True
         return False
 
@@ -614,7 +628,7 @@ class Node(object):
         new_pos = (self.pos[0] - self.hotspot[0], self.pos[1] - self.hotspot[1])
         if new_pos != old_pos:
             self.pos_real = new_pos
-            self.update_real_pos_in_tree()
+            self._update_real_pos_in_tree()
 
     def recalc_real_pos(self):
         self.pos_is_dirty = True
@@ -651,7 +665,7 @@ class Node(object):
         for child in chain(self.child_sprites, self.child_sprites_hidden, self.child_nodes, self.child_nodes_hidden):
             child.detach_from_display()
         self.display.on_node_child_removed(self)
-        self._remove_from_update_list()
+        # self._remove_from_update_list()
         event.emit('node.detached', self)
 
     # @time
