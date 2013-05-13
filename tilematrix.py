@@ -30,6 +30,12 @@ from diamond.font import Font
 
 from diamond.decorators import dump_args, time
 
+# Fix for Python 3 where xrange is absent and range is a generator.
+try:
+    xrange
+except NameError:
+    xrange = range
+
 
 class SectorNotAvailableException(Exception):
     pass
@@ -358,7 +364,6 @@ class TileMatrixSector(Node):
         return vault, s_id
 
     def __init__(self, tilematrix, offset, sector, pos, tile_size, vaults, sprite_bin, show_coords, use_caching):
-        # TODO SPEED how can we start with tiles shown instead of hidden?
         name = 'TileMatrixSector%s' % str(pos)
         super(TileMatrixSector, self).__init__(name=name)
         # print '__init__(%s)' % self
