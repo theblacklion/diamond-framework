@@ -971,6 +971,7 @@ class TileMatrix(Node):
             sector_ = data[1]
             if sector_ is not None:
                 # print 'remove sector_ instance from display:', key, data
+                # print len(sector_.get_all_sprites())
                 for key, sprites in sector_.get_all_sprites().iteritems():
                     try:
                         sprite_bin[key].extend(sprites)
@@ -987,7 +988,7 @@ class TileMatrix(Node):
                 #         if val.matrix_id != key:
                 #             print 'found wrong sprite %s in bin %s.' % (val.matrix_id, key)
                 #             exit()
-                sector_.remove_from_parent()
+                sector_.remove_from_parent()  # TODO move this removal into a idle housekeeping task.
                 data[1] = None
             del sector_
 
