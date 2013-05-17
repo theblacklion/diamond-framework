@@ -605,7 +605,11 @@ class Node(object):
                 try:
                     px, py = self.pos_real_in_tree
                     ix, iy = child.pos_real
-                    child.pos_real_in_tree = (px + ix, py + iy)
+                    new_pos = (px + ix, py + iy)
+                    if new_pos != child.pos_real_in_tree:
+                        child.pos_real_in_tree = new_pos
+                        if self.order_matters:
+                            self.child_sprites_need_reorder = True
                 except TypeError:
                     pass
             # if self.order_matters:

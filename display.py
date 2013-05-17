@@ -414,7 +414,9 @@ class Display(object):
             del self._drawables_dl, self.fbo, self.fbo_tex, self.screen
 
         # pygame.display.gl_set_attribute(pygame.locals.GL_MULTISAMPLEBUFFERS, 1)
-        pygame.display.gl_set_attribute(pygame.locals.GL_SWAP_CONTROL, 1 if self.vsync else 0)
+        if self.vsync:
+            pygame.display.gl_set_attribute(pygame.locals.GL_DOUBLEBUFFER, 1)
+            pygame.display.gl_set_attribute(pygame.locals.GL_SWAP_CONTROL, 1)
 
         mode = (window_size, flags, color_depth)
         # print mode
@@ -746,6 +748,7 @@ class Display(object):
 
     # @time
     def update(self):
+        # TODO Think of we really need to loop this. Usually we have items for about 2-3 iterations.
         if self.lock.acquire(False):
             update_list = chain(self.node_update_list.copy(), self.update_list.copy())
             self.node_update_list.clear()
@@ -774,15 +777,20 @@ class Display(object):
             self.rebuild_drawables_dl()
         # self.is_dirty = True  # NOTE for debugging only!
         if self.is_dirty:
-            self.is_dirty = False
             glCallList(self._drawables_dl)
-            # flip() may reduce FPS to e.g. 60 if vsync is enabled.
-            pygame.display.flip()
         is_idle = self.clock.get_time() <= int(round(1000.0 / self.framerate))
         if is_idle:
             # print 'do some idle tasks'
             event.emit('display.update.cpu_is_idle', self)
-        self.clock.tick(self.framerate)
+        # else:
+        #     print 'busy'
+        if self.is_dirty:
+            self.is_dirty = False
+            self.clock.tick()
+            # flip() may reduce FPS to e.g. 60 if vsync is enabled.
+            pygame.display.flip()
+        else:
+            self.clock.tick(self.framerate)
 
     def is_fullscreen(self):
         return self.fullscreen_enabled
