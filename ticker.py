@@ -135,8 +135,14 @@ class Ticker(AbstractThread):
             tick = OnetimeTick((func, msecs, timestamp, args, kwargs, dropable))
         else:
             tick = ReoccuringTick((func, msecs, timestamp, args, kwargs, dropable))
+        if len(self.tickers):
+            # print len(self.tickers)
+            # print tick
+            # print self.tickers[-1]
+            # print tick[2], self.tickers[-1][2], tick[2] < self.tickers[-1][2]
+            if tick[2] < self.tickers[-1][2]:
+                self.is_dirty = True
         self.tickers.add(tick)
-        self.is_dirty = True
         return tick
 
     # @dump_args
@@ -176,9 +182,10 @@ class Ticker(AbstractThread):
         if self.__is_paused:
             return
         if self.is_dirty:
-            tickers = self.tickers.copy()
-            self.tickers.clear()
-            self.tickers |= sorted(tickers, key=lambda item: item[2])
+            # tickers = self.tickers.copy()
+            # self.tickers.clear()
+            # self.tickers |= sorted(tickers, key=lambda item: item[2])
+            self.tickers = type(self.tickers)(sorted(self.tickers, key=lambda item: item[2]))
             self.is_dirty = False
             # print 'Ticker.tick(%s) reordered timeline.' % self
         handle_limit_per_iteration = self.handle_limit_per_iteration
