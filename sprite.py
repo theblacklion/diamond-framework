@@ -668,16 +668,6 @@ class Sprite(object):
                 event.emit('sprite.animation.looped', self)
         self._add_to_update_list(self.frame_plan[self.frame_no][0])
 
-    # TODO Try to avoid the update call if not necessary by letting the display
-    #      filter all dirty and outdated sprites for the update round.
-    #      For the animation the sprite should save the next required update
-    #      timestamp.
-    #      Perhaps we can combine both functionalities by using a 0 for a ASAP
-    #      update and a normal timestamp for a scheduled one.
-    #      Either way filtering could also be done by the sprite placing itself
-    #      into the display update list with a timestamp or 0 (for ASAP).
-    #      Before and after this we should measure the cpu load and msecs of
-    #      the display update method.
     # @dump_args
     def update(self):
         if self.frames_is_dirty:
