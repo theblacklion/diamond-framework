@@ -62,7 +62,6 @@ class TilemapScene(Scene):
 
         tilematrix = TileMatrix()
         tilematrix.load_config(shared_data['config_file'])
-        tilematrix.set_sector_size(20, 15)
         tilematrix.show_sector_coords = True
         tilematrix.add_to(self.root_node)
         self.tilematrix = tilematrix
@@ -123,12 +122,12 @@ class TilemapScene(Scene):
             event.add_listener(self.__on_undo_keyup_event, 'scene.event.system',
                                context__scene__is=self,
                                context__event__type__eq=pygame.locals.KEYUP,
-                               context__event__mod__eq=pygame.locals.KMOD_NONE,
+                               context__event__mod__in=(pygame.locals.KMOD_NONE, pygame.locals.KMOD_NUM),
                                context__event__key__eq=pygame.locals.K_z),
             event.add_listener(self.__on_redo_keyup_event, 'scene.event.system',
                                context__scene__is=self,
                                context__event__type__eq=pygame.locals.KEYUP,
-                               context__event__mod__eq=pygame.locals.KMOD_LSHIFT,
+                               context__event__mod__in=(pygame.locals.KMOD_LSHIFT, pygame.locals.KMOD_NUM | pygame.locals.KMOD_LSHIFT),
                                context__event__key__eq=pygame.locals.K_z),
             # TODO implement different draw methods: freehand, stamp, rectangle, ellipse/circle, fill selection
             # TODO implement selection methods: rectangle, ellipse/circle, add, substract
@@ -145,8 +144,7 @@ class TilemapScene(Scene):
 
     def draw_points(self, points):
         self.add_to_history(points)
-        for x, y, z, id in points:
-            self.tilematrix.set_tile_at(x, y, z, id)
+        self.tilematrix.set_tiles_at(points)
 
     def __on_mouse_motion_event(self, context):
         '''
@@ -268,7 +266,7 @@ class TilemapScene(Scene):
 
             self.draw_points(draw_points)
 
-    def use_layer(self, layer_name_index):
+    def use_layer(self, layer_name_index, hide_inactive_passability_layer=False):
         if layer_name_index >= 0 and layer_name_index < len(self.layer_names):
             self.tilematrix_z = self.layer_names[layer_name_index][0]
             self.layer_hud.set_text('Current layer: %d %s' % self.layer_names[layer_name_index])
@@ -278,7 +276,7 @@ class TilemapScene(Scene):
                 # print z, name
                 if z == layer:
                     self.tilematrix.set_alpha_of_layer(z, 100)
-                elif 'passability' in name:
+                elif 'passability' in name and hide_inactive_passability_layer:
                     self.tilematrix.set_alpha_of_layer(z, 0)
                 else:
                     self.tilematrix.set_alpha_of_layer(z, 30)
@@ -287,7 +285,7 @@ class TilemapScene(Scene):
             self.layer_name_index = layer_name_index
             for z, name in self.layer_names:
                 # print z, name
-                if 'passability' in name:
+                if 'passability' in name and hide_inactive_passability_layer:
                     self.tilematrix.set_alpha_of_layer(z, 0)
                 else:
                     self.tilematrix.set_alpha_of_layer(z, 100)
@@ -323,9 +321,7 @@ class TilemapScene(Scene):
         if pos == 0:
             return
         points = history[pos - 1]['before']
-        tilematrix = self.tilematrix
-        for x, y, z, value in points:
-            tilematrix.set_tile_at(x, y, z, value)
+        self.tilematrix.set_tiles_at(points)
         self.history_pos -= 1
 
     # @dump_args
@@ -335,9 +331,7 @@ class TilemapScene(Scene):
         if pos == len(history):
             return
         points = history[pos]['after']
-        tilematrix = self.tilematrix
-        for x, y, z, value in points:
-            tilematrix.set_tile_at(x, y, z, value)
+        self.tilematrix.set_tiles_at(points)
         self.history_pos += 1
 
     # @dump_args
@@ -346,9 +340,9 @@ class TilemapScene(Scene):
         pos = self.history_pos
         del history[pos:]
         backup = []
-        tilematrix = self.tilematrix
+        tilematrix__get_tile_id_at = self.tilematrix.get_tile_id_at
         for x, y, z, value in points:
-            backup.append((x, y, z, tilematrix.get_tile_id_at(x, y, z)))
+            backup.append((x, y, z, tilematrix__get_tile_id_at(x, y, z)))
         history.append(dict(
             before=backup,
             after=points,
