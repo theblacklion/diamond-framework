@@ -64,7 +64,12 @@ class OrderedSet(collections.MutableSet):
             raise KeyError('set is empty')
         # key = next(reversed(self)) if last else next(iter(self))
         if last:
-            key = next(reversed(self))
+            try:
+                key = next(reversed(self))
+            except StopIteration:
+                print self
+                print 'Got unexpected StopIteration in pop(). self.map = %s' % self.map
+                raise
         else:
             key = next(iter(self))
         self.discard(key)
@@ -111,10 +116,12 @@ class OrderedSet(collections.MutableSet):
         If you do this multiple times in a row you might want to create a list
         from this and continue to work with it instead.
         '''
-        if abs(index) >= len(self.map):
-            raise IndexError('set index out of range')
+        # print index, len(self.map)
         if index < 0:
             index = len(self.map) + index
+        if index >= len(self.map) or index < 0:
+            # print index, len(self.map), self.map
+            raise IndexError('set index out of range')
         iterable = iter(self)
         curr = next(iterable)
         for count in xrange(0, index):
