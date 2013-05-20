@@ -114,6 +114,7 @@ class Matrix(object):
                     os.remove(os.path.join(root, filename))
         indexes = dict()
         for root, dirs, files in os.walk(self.__data_path):
+            files = sorted(files)
             # print(root, dirs, files)
             print('Found %d sectors to index...' % len(files))
             for filename in files:
