@@ -23,7 +23,7 @@ class Selection(object):
 
     def add_tilematrix(self, tilematrix):
         t_w, t_h = tilematrix.get_tile_size()
-        selection_box = SpritePrimitives.make_rectangle(t_w + 2, t_h + 2, color=(255, 255, 255, 192), background=(255, 255, 255, 96), sprite_name='selection', hotspot=(1, 1))
+        selection_box = SpritePrimitives.make_rectangle(t_w, t_h, color=(255, 255, 255, 192), background=(255, 255, 255, 96), sprite_name='selection', hotspot=(0, 0))
         selection_vault = selection_box.vault.get_vault()
         tilematrix.load_vault(selection_vault, 'selection')
         self.selection[tilematrix.name] = OrderedDict()
@@ -41,18 +41,21 @@ class Selection(object):
         tilematrix = self.alias2matrix[alias]
         z = self.tilematrix_z
 
+        points_ = []
         for pos in points:
             if translate_pos:
                 pos = self.__translate_pos(tilematrix, pos)
             x, y = pos
-            tilematrix.set_tile_at(x, y, z, None)
+            points_.append((x, y, z, None))
             del selection[pos]
+        tilematrix.set_tiles_at(points_, is_cacheable=False)
 
     def add_selection(self, alias, points, translate_pos=False):
         selection = self.selection[alias]
         tilematrix = self.alias2matrix[alias]
         z = self.tilematrix_z
 
+        points_ = []
         for x, y in points:
             if translate_pos:
                 x, y = self.__translate_pos(tilematrix, (x, y))
@@ -60,10 +63,11 @@ class Selection(object):
             # print 'ids =', id
             if self.skip_empty_tiles and not id:
                 continue
-            tilematrix.set_tile_at(x, y, z, 'selection/selection', is_cacheable=False)
+            points_.append((x, y, z, 'selection/selection'))
             if z in id:
                 del id[z]
             selection[(x, y)] = id
+        tilematrix.set_tiles_at(points_, is_cacheable=False)
 
     def set_selection(self, alias, points, translate_pos=False):
         selection = self.selection[alias]
