@@ -125,7 +125,12 @@ class OrderedSet(collections.MutableSet):
         iterable = iter(self)
         curr = next(iterable)
         for count in xrange(0, index):
-            curr = next(iterable)
+            try:
+                curr = next(iterable)
+            except StopIteration:
+                print self
+                print len(self.map), index, count
+                raise
         return curr
 
     # @time
