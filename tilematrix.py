@@ -457,6 +457,8 @@ class TileMatrixSector(Node):
                     # print x, y, col
                     if col is None:
                         continue
+                    tile_pos = t_w * x, t_h * y
+                    # print tile_pos
                     for z, id in col.iteritems():
                         if id != 'None' and id is not None:
                             # print z, id, sprite_bin
@@ -507,9 +509,8 @@ class TileMatrixSector(Node):
                             # print frame
                             surface = frame.get_surface()
                             # print surface
-                            tile_pos = t_w * x, t_h * y
-                            # print tile_pos
-                            repr_image.blit(surface, tile_pos, surface.get_rect())
+                            # And finally draw it.
+                            repr_image.blit(surface, tile_pos, ((0, 0), tile_size))
 
             # Write repr images to disk.
             if cache_path is not None:
@@ -669,7 +670,7 @@ class TileMatrixSector(Node):
                     surface = frame.get_surface()
                     # print surface
                     # And finally draw it.
-                    repr_image.blit(surface, tile_pos, surface.get_rect())
+                    repr_image.blit(surface, tile_pos, ((0, 0), tile_size))
 
             try:
                 repr_sprite = dict(self.__sector_map[(-1, -1)])[z]
