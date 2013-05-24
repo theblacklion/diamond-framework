@@ -67,7 +67,11 @@ def time(func):
         sys.stdout = output
 
         start = get_ticks()
-        result = func(*args, **kwargs)
+        excp = None
+        try:
+            result = func(*args, **kwargs)
+        except Exception as excp:
+            result = ''
         stop = get_ticks()
 
         contents = output.getvalue()
@@ -82,6 +86,9 @@ def time(func):
             time_stats[func_name].append(stop - start)
         except KeyError:
             time_stats[func_name] = [stop - start]
+
+        if excp:
+            raise excp
 
         return result
     wrapper.__wrapped__ = func
