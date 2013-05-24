@@ -452,6 +452,7 @@ class TileMatrixSector(Node):
                 create_repr_vault(z, surface)
         else:
             get_repr_vault = self.__get_repr_vault
+            splitted_vault_cache = {}
             for y, row in enumerate(sector):
                 for x, col in enumerate(row):
                     # print x, y, col
@@ -460,6 +461,7 @@ class TileMatrixSector(Node):
                     tile_pos = t_w * x, t_h * y
                     # print tile_pos
                     for z, id in col.iteritems():
+                        _id = id
                         if id != 'None' and id is not None:
                             # print z, id, sprite_bin
                             # if id in sprite_bin and sprite_bin[id]:
@@ -486,31 +488,41 @@ class TileMatrixSector(Node):
                             repr_image = repr_vault.surface
 
                             # Now get requested vault and surface to copy from.
-                            vault, s_id = split_vault_and_id_from_path(id)
+                            try:
+                                vault, s_id = splitted_vault_cache[id]
+                            except:
+                                vault, s_id = splitted_vault_cache[id] = split_vault_and_id_from_path(id)
                             # print vault, s_id
 
                             # Avoid func call in favor of speed.
-                            sprite = vault.sprites[s_id]
+                            try:
+                                sprite = vault.sprites[s_id]
+                            except KeyError:
+                                print('Could not find sprite data "%s" for sector %s of pos %s.' % (_id, pos, (x, y)))
+                                repr_image.fill((255, 255, 255, 255), (tile_pos, tile_size))
+                                continue
                             # print sprite
                             # Avoid func call in favor of speed.
                             action = sprite.actions['none']
                             # print action
                             # Avoid func call in favor of speed.
                             frame = action.frames[0]
+                            # Set tile to id when blitting on the repr image.
+                            tile = id
                             # # Fill sector_map for later use.
-                            # key = (x, y)
-                            # try:
-                            #     # TODO can we change the list to dict?
-                            #     sector_map[key].append((z, tile))
-                            # except KeyError:
-                            #     sector_map[key] = [(z, tile)]
+                            key = (x, y)
+                            try:
+                                # TODO can we change the list to dict?
+                                sector_map[key].append((z, tile))
+                            except KeyError:
+                                sector_map[key] = [(z, tile)]
 
                             # Get repr vault and surface to draw on.
                             # print frame
                             surface = frame.get_surface()
                             # print surface
                             # And finally draw it.
-                            repr_image.blit(surface, tile_pos, ((0, 0), tile_size))
+                            repr_image.blit(surface, tile_pos)
 
             # Write repr images to disk.
             if cache_path is not None:
@@ -623,8 +635,10 @@ class TileMatrixSector(Node):
 
         tilematrix__get_layer = self.__tilematrix.get_layer
         tilematrix__add_layer = self.__tilematrix.add_layer
-        t_w, t_h = tile_size = self.__tile_size
+        t_w, t_h = self.__tile_size
         split_vault_and_id_from_path = self.__split_vault_and_id_from_path
+        sector_map = self.__sector_map
+        splitted_vault_cache = {}
         for z, points in groups.iteritems():
             layer = tilematrix__get_layer(z)
             if layer is None:
@@ -638,16 +652,19 @@ class TileMatrixSector(Node):
                 tile_pos = t_w * x, t_h * y
                 # print(tile_pos, z, id)
 
-                # Clear old data.
-                repr_image.fill((0, 0, 0, 0), (tile_pos, tile_size))
-
-            for x, y, id in points:
-                if id is not None:
-                    tile_pos = t_w * x, t_h * y
-                    # print(tile_pos, z, id)
-
-                    # Now get requested vault and surface to copy from.
-                    vault, s_id = split_vault_and_id_from_path(id)
+                # Get old tile info.
+                try:
+                    # print sector_map[(x, y)]
+                    old_tile = dict(sector_map[(x, y)])[z]
+                    # print old_tile
+                except KeyError:
+                    pass
+                else:
+                    # Get vault of old tile.
+                    try:
+                        vault, s_id = splitted_vault_cache[old_tile]
+                    except:
+                        vault, s_id = splitted_vault_cache[old_tile] = split_vault_and_id_from_path(old_tile)
                     # print vault, s_id
 
                     # Avoid func call in favor of speed.
@@ -658,19 +675,45 @@ class TileMatrixSector(Node):
                     # print action
                     # Avoid func call in favor of speed.
                     frame = action.frames[0]
-                    # # Fill sector_map for later use.
-                    # key = (x, y)
-                    # try:
-                    #     # TODO can we change the list to dict?
-                    #     sector_map[key].append((z, tile))
-                    # except KeyError:
-                    #     sector_map[key] = [(z, tile)]
+                    # Get size of frame.
+                    rect_size = frame.rect[2:]
+                    # Clear old data.
+                    repr_image.fill((0, 0, 0, 0), (tile_pos, rect_size))
 
+            for x, y, id in points:
+                if id is not None:
+                    tile_pos = t_w * x, t_h * y
+                    # print(tile_pos, z, id)
+
+                    # Now get requested vault and surface to copy from.
+                    try:
+                        vault, s_id = splitted_vault_cache[id]
+                    except:
+                        vault, s_id = splitted_vault_cache[id] = split_vault_and_id_from_path(id)
+                    # print vault, s_id
+
+                    # Avoid func call in favor of speed.
+                    sprite = vault.sprites[s_id]
+                    # print sprite
+                    # Avoid func call in favor of speed.
+                    action = sprite.actions['none']
+                    # print action
+                    # Avoid func call in favor of speed.
+                    frame = action.frames[0]
                     # Get repr vault and surface to draw on.
                     surface = frame.get_surface()
                     # print surface
                     # And finally draw it.
-                    repr_image.blit(surface, tile_pos, ((0, 0), tile_size))
+                    repr_image.blit(surface, tile_pos)
+                    # Set tile to id when blitting on the repr image.
+                    tile = id
+                    # Manage sector_map.
+                    key = (x, y)
+                    try:
+                        # TODO can we change the list to dict?
+                        sector_map[key].append((z, tile))
+                    except KeyError:
+                        sector_map[key] = [(z, tile)]
 
             try:
                 repr_sprite = dict(self.__sector_map[(-1, -1)])[z]
@@ -678,7 +721,6 @@ class TileMatrixSector(Node):
                 # print 'make', z
                 repr_sprite = Sprite.make(repr_vault)
                 repr_sprite.pos = self.__offset
-                sector_map = self.__sector_map
                 layer.add(repr_sprite)
                 _key = (-1, -1)
                 try:
