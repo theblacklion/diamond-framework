@@ -494,19 +494,25 @@ class TileMatrixSector(Node):
                                 vault, s_id = splitted_vault_cache[id] = split_vault_and_id_from_path(id)
                             # print vault, s_id
 
-                            # Avoid func call in favor of speed.
                             try:
+                                # Avoid func call in favor of speed.
                                 sprite = vault.sprites[s_id]
                             except KeyError:
                                 print('Could not find sprite data "%s" for sector %s of pos %s.' % (_id, pos, (x, y)))
                                 repr_image.fill((255, 255, 255, 255), (tile_pos, tile_size))
-                                continue
-                            # print sprite
-                            # Avoid func call in favor of speed.
-                            action = sprite.actions['none']
-                            # print action
-                            # Avoid func call in favor of speed.
-                            frame = action.frames[0]
+                            else:
+                                # print sprite
+                                # Avoid func call in favor of speed.
+                                action = sprite.actions['none']
+                                # print action
+                                # Avoid func call in favor of speed.
+                                frame = action.frames[0]
+                                # Get repr vault and surface to draw on.
+                                # print frame
+                                surface = frame.get_surface()
+                                # print surface
+                                # And finally draw it.
+                                repr_image.blit(surface, tile_pos)
                             # Set tile to id when blitting on the repr image.
                             tile = id
                             # # Fill sector_map for later use.
@@ -516,13 +522,6 @@ class TileMatrixSector(Node):
                                 sector_map[key].append((z, tile))
                             except KeyError:
                                 sector_map[key] = [(z, tile)]
-
-                            # Get repr vault and surface to draw on.
-                            # print frame
-                            surface = frame.get_surface()
-                            # print surface
-                            # And finally draw it.
-                            repr_image.blit(surface, tile_pos)
 
             # Write repr images to disk.
             if cache_path is not None:
@@ -667,16 +666,21 @@ class TileMatrixSector(Node):
                         vault, s_id = splitted_vault_cache[old_tile] = split_vault_and_id_from_path(old_tile)
                     # print vault, s_id
 
-                    # Avoid func call in favor of speed.
-                    sprite = vault.sprites[s_id]
-                    # print sprite
-                    # Avoid func call in favor of speed.
-                    action = sprite.actions['none']
-                    # print action
-                    # Avoid func call in favor of speed.
-                    frame = action.frames[0]
-                    # Get size of frame.
-                    rect_size = frame.rect[2:]
+                    try:
+                        # Avoid func call in favor of speed.
+                        sprite = vault.sprites[s_id]
+                    except KeyError:
+                        print('Could not find sprite data "%s" for sector %s of pos %s.' % (old_tile, tile_pos, (x, y)))
+                        rect_size = (t_w, t_h)
+                    else:
+                        # print sprite
+                        # Avoid func call in favor of speed.
+                        action = sprite.actions['none']
+                        # print action
+                        # Avoid func call in favor of speed.
+                        frame = action.frames[0]
+                        # Get size of frame.
+                        rect_size = frame.rect[2:]
                     # Clear old data.
                     repr_image.fill((0, 0, 0, 0), (tile_pos, rect_size))
 
