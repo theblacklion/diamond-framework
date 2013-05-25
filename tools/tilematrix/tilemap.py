@@ -66,6 +66,8 @@ class TilemapScene(Scene):
         tilematrix.add_to(self.root_node)
         self.tilematrix = tilematrix
 
+        self.__default_cursor = pygame.mouse.get_cursor()
+
         config = ConfigParser.ConfigParser()
         config.read(shared_data['config_file'])
         self.layer_names = list([(int(z), id) for z, id in config.items('layer.names')])
@@ -171,6 +173,10 @@ class TilemapScene(Scene):
         rmb_pressed = context.event.button == 3
 
         if self.layer_name_index != -1 and (lmb_pressed or rmb_pressed):
+            if lmb_pressed:
+                pygame.mouse.set_cursor(*pygame.cursors.ball)
+            elif rmb_pressed:
+                pygame.mouse.set_cursor(*pygame.cursors.diamond)
             self.selection.begin_selection(self.tilematrix.name, pos, translate_pos=True)
 
     def __on_mouse_button_released_event(self, context):
@@ -265,9 +271,14 @@ class TilemapScene(Scene):
                     draw_points.append((s_x, s_y, self.tilematrix_z, id))
 
             self.draw_points(draw_points)
+            if self.layer_name_index != -1:
+                pygame.mouse.set_cursor(*pygame.cursors.tri_left)
+            else:
+                pygame.mouse.set_cursor(*self.__default_cursor)
 
     def use_layer(self, layer_name_index, hide_inactive_passability_layer=False):
         if layer_name_index >= 0 and layer_name_index < len(self.layer_names):
+            pygame.mouse.set_cursor(*pygame.cursors.tri_left)
             self.tilematrix_z = self.layer_names[layer_name_index][0]
             self.layer_hud.set_text('Current layer: %d %s' % self.layer_names[layer_name_index])
             self.layer_name_index = layer_name_index
@@ -281,6 +292,7 @@ class TilemapScene(Scene):
                 else:
                     self.tilematrix.set_alpha_of_layer(z, 30)
         elif layer_name_index == -1:
+            pygame.mouse.set_cursor(*self.__default_cursor)
             self.layer_hud.set_text('Showing all layers.')
             self.layer_name_index = layer_name_index
             for z, name in self.layer_names:
