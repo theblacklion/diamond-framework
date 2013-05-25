@@ -421,6 +421,8 @@ class Display(object):
         mode = (window_size, flags, color_depth)
         # print mode
         self.screen = pygame.display.set_mode(*mode)
+        # Auto-center mouse pointer on screen.
+        pygame.mouse.set_pos(window_size[0] / 2, window_size[1] / 2)
 
         # Clear the screen.
         glClearColor(*self.gl_clear_color)
