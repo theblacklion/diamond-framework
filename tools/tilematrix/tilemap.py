@@ -18,6 +18,7 @@ from diamond.font import Font
 from diamond.decorators import dump_args, time
 
 from diamond.tools.tilematrix.selection import Selection
+from diamond.tools.tilematrix.camera import Camera
 
 
 class TilemapScene(Scene):
@@ -55,7 +56,9 @@ class TilemapScene(Scene):
         self.add_default_listeners()
 
         self.ticker = Ticker()
-        self.bind(self.ticker)
+        self.camera_ticker = Ticker()
+        self.camera_ticker.is_threaded = False  # Keep in sync with display.
+        self.bind(self.ticker, self.camera_ticker)
 
         self.__setup_fps()
         self.__setup_layer_hud()
@@ -66,7 +69,11 @@ class TilemapScene(Scene):
         tilematrix.add_to(self.root_node)
         self.tilematrix = tilematrix
 
+        self.camera = Camera(tilematrix, self)
+        self.camera_ticker.add(self.camera.tick, 15)
+
         self.__default_cursor = pygame.mouse.get_cursor()
+        self._cursor_pos = (0, 0)
 
         config = ConfigParser.ConfigParser()
         config.read(shared_data['config_file'])
@@ -155,6 +162,7 @@ class TilemapScene(Scene):
         '''
         pos = context.event.pos
         # print 'pos =', pos
+        self._cursor_pos = pos
 
         lmb_pressed = context.event.buttons == (1, 0, 0)
         rmb_pressed = context.event.buttons == (0, 0, 1)
