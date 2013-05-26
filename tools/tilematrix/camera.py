@@ -40,6 +40,8 @@ class Camera(object):
             r_x = (edge_right - pos[0]) / 10.0
         if r_x or r_y:
             self.scene.set_pos_rel(int(r_x), int(r_y))
+        else:
+            return
         # Now keep used matrix in view.
         rect = self.scene.get_virtual_rect()
         pos = self.scene.pos
