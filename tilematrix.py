@@ -104,6 +104,11 @@ class Matrix(object):
         config = ConfigParser.ConfigParser()
         config.read(os.path.join(path, config_file))
         self.__sector_size = map(int, config.get('general', 'sector_size').split(','))
+        index_filename = os.path.join(self.__data_path, 'b.csv')
+        if os.path.exists(index_filename):
+            reader = csv.reader(open(index_filename), skipinitialspace=True)
+            data = map(int, reader.next())
+            self.__top, self.__left, self.__bottom, self.__right = data
 
     def __rebuild_index(self):
         s_w, s_h = self.__sector_size
@@ -113,6 +118,7 @@ class Matrix(object):
                 if filename.startswith('i.') and filename.endswith('.csv'):
                     os.remove(os.path.join(root, filename))
         indexes = dict()
+        top, left, bottom, right = self.__top, self.__left, self.__bottom, self.__right
         for root, dirs, files in os.walk(self.__data_path):
             files = sorted(files)
             # print(root, dirs, files)
@@ -126,6 +132,11 @@ class Matrix(object):
                 for x, y, z, id in reader:
                     x = (s_x * s_w) + int(x)
                     y = (s_y * s_h) + int(y)
+                    top = min(top, y)
+                    left = min(left, x)
+                    bottom = max(bottom, y)
+                    right = max(right, x)
+                    # TODO track z axis min and max.
                     sheet, tile_id = id.split('/')
                     # Update index of specific tile.
                     if id not in indexes:
@@ -138,6 +149,10 @@ class Matrix(object):
                         index_filename = os.path.join(self.__data_path, 'i.%s.csv' % sheet)
                         indexes[sheet] = csv.writer(open(index_filename, 'w'))
                     indexes[sheet].writerow((x, y, z, tile_id))
+        index_filename = os.path.join(self.__data_path, 'b.csv')
+        writer = csv.writer(open(index_filename, 'w'))
+        writer.writerow((top, left, bottom, right))
+        self.__top, self.__left, self.__bottom, self.__right = top, left, bottom, right
         print('Finished rebuilding matrix index.')
 
     def __point_cmp_key(self, item):
