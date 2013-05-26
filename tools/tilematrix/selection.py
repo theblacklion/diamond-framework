@@ -23,7 +23,7 @@ class Selection(object):
 
     def add_tilematrix(self, tilematrix):
         t_w, t_h = tilematrix.get_tile_size()
-        selection_box = SpritePrimitives.make_rectangle(t_w, t_h, color=(255, 255, 255, 192), background=(255, 255, 255, 96), sprite_name='selection', hotspot=(0, 0))
+        selection_box = SpritePrimitives.make_rectangle(t_w, t_h, color=(255, 255, 255, 128), background=(255, 255, 255, 36), sprite_name='selection', hotspot=(0, 0))
         selection_vault = selection_box.vault.get_vault()
         tilematrix.load_vault(selection_vault, 'selection')
         self.selection[tilematrix.name] = OrderedDict()

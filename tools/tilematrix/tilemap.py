@@ -70,7 +70,7 @@ class TilemapScene(Scene):
         self.tilematrix = tilematrix
 
         self.camera = Camera(tilematrix, self)
-        self.camera_ticker.add(self.camera.tick, 15)
+        self.camera_ticker.add(self.camera.tick, 16)
 
         self.__default_cursor = pygame.mouse.get_cursor()
         self._cursor_pos = (0, 0)
