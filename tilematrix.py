@@ -412,6 +412,7 @@ class TileMatrixSector(Node):
         # print '__init__(%s)' % self
         self.__tilematrix = proxy(tilematrix)
         self.__offset = offset
+        self.__sector_pos = pos  # Just to keep track of it. Easier debugging.
         self.order_matters = False
         self.manage_order_pos = False  # We manage our order_pos ourselves.
         sector_map = self.__sector_map = dict()
@@ -476,7 +477,6 @@ class TileMatrixSector(Node):
                     tile_pos = t_w * x, t_h * y
                     # print tile_pos
                     for z, id in col.iteritems():
-                        _id = id
                         if id != 'None' and id is not None:
                             # print z, id, sprite_bin
                             # if id in sprite_bin and sprite_bin[id]:
@@ -513,7 +513,7 @@ class TileMatrixSector(Node):
                                 # Avoid func call in favor of speed.
                                 sprite = vault.sprites[s_id]
                             except KeyError:
-                                print('Could not find sprite data "%s" for sector %s of pos %s.' % (_id, pos, (x, y)))
+                                print('Could not find sprite data "%s" for sector %s of pos %s.' % (id, pos, (x, y)))
                                 repr_image.fill((255, 255, 255, 255), (tile_pos, tile_size))
                             else:
                                 # print sprite
@@ -640,6 +640,7 @@ class TileMatrixSector(Node):
     def set_sprites_at(self, points, hide=True, is_cacheable=True):
         # TODO implement hide and is_cacheable.
         # print points
+        pos = self.__sector_pos
         groups = dict()
         for x, y, z, id in points:
             try:
@@ -685,7 +686,7 @@ class TileMatrixSector(Node):
                         # Avoid func call in favor of speed.
                         sprite = vault.sprites[s_id]
                     except KeyError:
-                        print('Could not find sprite data "%s" for sector %s of pos %s.' % (old_tile, tile_pos, (x, y)))
+                        print('Could not find sprite data "%s" for sector %s of pos %s.' % (old_tile, pos, (x, y)))
                         rect_size = (t_w, t_h)
                     else:
                         # print sprite
@@ -711,19 +712,24 @@ class TileMatrixSector(Node):
                         vault, s_id = splitted_vault_cache[id] = split_vault_and_id_from_path(id)
                     # print vault, s_id
 
-                    # Avoid func call in favor of speed.
-                    sprite = vault.sprites[s_id]
-                    # print sprite
-                    # Avoid func call in favor of speed.
-                    action = sprite.actions['none']
-                    # print action
-                    # Avoid func call in favor of speed.
-                    frame = action.frames[0]
-                    # Get repr vault and surface to draw on.
-                    surface = frame.get_surface()
-                    # print surface
-                    # And finally draw it.
-                    repr_image.blit(surface, tile_pos)
+                    try:
+                        # Avoid func call in favor of speed.
+                        sprite = vault.sprites[s_id]
+                    except KeyError:
+                        print('Could not find sprite data "%s" for sector %s of pos %s.' % (id, pos, (x, y)))
+                        repr_image.fill((255, 255, 255, 255), (tile_pos, (t_w, t_h)))
+                    else:
+                        # print sprite
+                        # Avoid func call in favor of speed.
+                        action = sprite.actions['none']
+                        # print action
+                        # Avoid func call in favor of speed.
+                        frame = action.frames[0]
+                        # Get repr vault and surface to draw on.
+                        surface = frame.get_surface()
+                        # print surface
+                        # And finally draw it.
+                        repr_image.blit(surface, tile_pos)
                     # Set tile to id when blitting on the repr image.
                     tile = id
                     # Manage sector_map.
