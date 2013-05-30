@@ -1303,6 +1303,7 @@ class TileMatrix(Node):
             sectors_to_display[key][1] = data[1]
 
         # Handle sectors new to display.
+        matrix__get_rect = self.__matrix.get_rect
         for key in keys_to_be_added:
             data = sectors_to_display[key]
             if data[1] is None:
@@ -1322,7 +1323,9 @@ class TileMatrix(Node):
                 #             print 'found wrong sprite %s in bin %s.' % (val.matrix_id, key)
                 #             exit()
                 offset = pos[0] * sp_w, pos[1] * sp_h
-                sector_ = TileMatrixSector(self, offset, self.__matrix.get_rect(*rect), pos, self.__tile_size, self.__vaults, sprite_bin, self.show_sector_coords)
+                sector_ = TileMatrixSector(self, offset, matrix__get_rect(*rect),
+                                           pos, self.__tile_size, self.__vaults,
+                                           sprite_bin, self.show_sector_coords)
                 sector_.pos = offset
                 # print sector_.pos
                 # Only attach sector_ if really necessary.
