@@ -1330,8 +1330,9 @@ class TileMatrix(Node):
                 # if self.show_sector_coords or sector_.get_layers():
                 sector_.add_to(self.__sector_node)
                 data[1] = sector_
-                del sector_
+                event.emit('tilematrix.sector.created.after', sector_)
                 # TODO can we somehow sync animations of same tiles?
+                del sector_
 
         self.__last_visible_sectors = sectors_to_display
         # self.__update_tile_visibility()
