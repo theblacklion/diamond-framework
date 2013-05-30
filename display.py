@@ -337,6 +337,7 @@ class Display(object):
                       scaling=1.0,
                       show_mouse_in_windowed_mode=True,
                       show_mouse_in_fullscreen_mode=False,
+                      auto_center_mouse_on_screen=False,
                       expand_in_fullscreen=False,
                       maximize_fullscreen=False,
                       vsync=True):
@@ -352,6 +353,7 @@ class Display(object):
         self.scaling = scaling
         self.show_mouse_in_windowed_mode = show_mouse_in_windowed_mode
         self.show_mouse_in_fullscreen_mode = show_mouse_in_fullscreen_mode
+        self.auto_center_mouse_on_screen = auto_center_mouse_on_screen
         self.expand_in_fullscreen = expand_in_fullscreen
         self.maximize_fullscreen = maximize_fullscreen
         self.fullscreen_enabled = False
@@ -421,8 +423,9 @@ class Display(object):
         mode = (window_size, flags, color_depth)
         # print mode
         self.screen = pygame.display.set_mode(*mode)
-        # Auto-center mouse pointer on screen.
-        pygame.mouse.set_pos(window_size[0] / 2, window_size[1] / 2)
+        if self.auto_center_mouse_on_screen:
+            # Auto-center mouse pointer on screen.
+            pygame.mouse.set_pos(window_size[0] / 2, window_size[1] / 2)
 
         # Clear the screen.
         glClearColor(*self.gl_clear_color)
