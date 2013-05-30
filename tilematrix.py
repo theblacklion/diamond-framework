@@ -1269,6 +1269,7 @@ class TileMatrix(Node):
             data = last_visible_sectors[key]
             sector_ = data[1]
             if sector_ is not None:
+                event.emit('tilematrix.sector.dropped.before', sector_)
                 # print 'remove sector_ instance from display:', key, data
                 # print len(sector_.get_all_sprites())
                 for key, sprites in sector_.get_all_sprites().iteritems():
@@ -1289,6 +1290,8 @@ class TileMatrix(Node):
                 #             exit()
                 sector_.remove_from_parent()  # TODO move this removal into a idle housekeeping task.
                 data[1] = None
+                # For now nobody needs this.
+                # event.emit('tilematrix.sector.dropped.after', sector_)
             del sector_
 
         # Handle sectors to hold.
