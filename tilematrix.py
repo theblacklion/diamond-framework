@@ -349,7 +349,8 @@ class Matrix(object):
         # exit()
         return results
 
-    def find_in_matrix(self, data):
+    # Tilesheet find and index above should be moved into TileMatrix class.
+    def find_in_matrix_by_tilesheet(self, data):
         if '/' in data:
             data = '%s,%s' % tuple(data.split('/'))
         index_filename = os.path.join(self.__data_path, 'i.%s.csv' % data)
@@ -1576,5 +1577,5 @@ class TileMatrix(Node):
         results = self.__matrix.find_in_rect(s_x * w, s_y * h, w, h, value)
         return results
 
-    def find_in_matrix(self, value):
-        return self.__matrix.find_in_matrix(value)
+    def find_in_matrix_by_tilesheet(self, value):
+        return self.__matrix.find_in_matrix_by_tilesheet(value)
