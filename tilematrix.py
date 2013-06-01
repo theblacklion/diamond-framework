@@ -422,6 +422,7 @@ class TileMatrixSector(Node):
         self.shown_tiles = set()
         self.__vaults = vaults
         self.__tile_size = tile_size
+        self.__sector_size = (len(sector[0]), len(sector))
         self.__representations = dict()
 
         # Prepare flattened down size of the map.
@@ -870,6 +871,12 @@ class TileMatrixSector(Node):
 
     def get_child_nodes(self):
         return super(TileMatrixSector, self).get_child_nodes() - set([self.label_node])
+
+    def get_sector_size(self):
+        return self.__sector_size
+
+    def get_sector_pos(self):
+        return self.__sector_pos
 
     # def show_children(self, children):
     #     self.hidden_tiles -= set(children)
@@ -1353,9 +1360,6 @@ class TileMatrix(Node):
         s_w, s_h = self.__sector_size
         s_x = x // s_w
         s_y = y // s_h
-        # x -= s_x * s_w
-        # y -= s_y * s_h
-        # print (s_x, s_y), (x, y)
         return self.__last_visible_sectors.get((s_x, s_y), [None, None])[1]
 
     # @time
@@ -1525,6 +1529,19 @@ class TileMatrix(Node):
     def translate_to_pos(self, x, y):
         tile_size = self.__tile_size
         return x * tile_size[0], y * tile_size[1]
+
+    def get_sector_pos(self, x, y):
+        s_w, s_h = self.__sector_size
+        s_x = x // s_w
+        s_y = y // s_h
+        return s_x, s_y
+
+    def translate_to_sector_pos(self, x, y):
+        s_w, s_h = self.__sector_size
+        s_x, s_y = self.get_sector_pos(x, y)
+        x -= s_x * s_w
+        y -= s_y * s_h
+        return x, y
 
     def add_layer(self, z):
         if z in self.__layers:
