@@ -260,29 +260,31 @@ class Matrix(object):
                         self.set_point(x, y, z, str(data))
 
     # @time
+    def __get_rect(self, range_x, range_y):
+        matrix_get = self.__matrix.get
+        default_value = self.__default_value
+        if default_value is not None:
+            copy = default_value.copy
+            matrix = [
+                [matrix_get((x_, y_), copy()) for x_ in range_x]
+                for y_ in range_y
+            ]
+        else:
+            matrix = [
+                [matrix_get((x_, y_), None) for x_ in range_x]
+                for y_ in range_y
+            ]
+        return matrix
+
+    # @time
     def get_sector(self, s_x, s_y):
         self.__ensure_sector_loaded(s_x, s_y)
         s_w, s_h = self.__sector_size
         x = s_x * s_w
         y = s_y * s_h
-        horiz_range = xrange(x, x + s_w, 1)
-        vert_range = xrange(y, y + s_h, 1)
-        matrix_get = self.__matrix.get
-        matrix = []
-        matrix_append = matrix.append
-        default_value = self.__default_value
-        if default_value is not None:
-            copy = lambda: default_value.copy()
-        else:
-            copy = lambda: None
-        for y in vert_range:
-            row = []
-            row_append = row.append
-            for x in horiz_range:
-                pos = (x, y)
-                row_append(matrix_get(pos, copy()))
-            matrix_append(row)
-        return matrix
+        range_x = xrange(x, x + s_w, 1)
+        range_y = xrange(y, y + s_h, 1)
+        return self.__get_rect(range_x, range_y)
 
     # @time
     def get_rect(self, x, y, w, h):
@@ -297,24 +299,7 @@ class Matrix(object):
         # print sectors_to_prefetch
         [self.__ensure_sector_loaded(*pos) for pos in sectors_to_prefetch]
         # print self.__sectors_loaded
-        matrix_get = self.__matrix.get
-        matrix = []
-        matrix_append = matrix.append
-        default_value = self.__default_value
-        if default_value is not None:
-            copy = lambda: default_value.copy()
-        else:
-            copy = lambda: None
-        for y in range_y:
-            row = []
-            row_append = row.append
-            for x in range_x:
-                pos = (x, y)
-                row_append(matrix_get(pos, copy()))
-            matrix_append(row)
-            # print row
-        # exit()
-        return matrix
+        return self.__get_rect(range_x, range_y)
 
     # @time
     def find_in_rect(self, x, y, w, h, data):
@@ -332,15 +317,14 @@ class Matrix(object):
         matrix_get = self.__matrix.get
         default_value = self.__default_value
         if default_value is not None:
-            copy = lambda: default_value.copy()
+            copy = default_value.copy
         else:
             copy = lambda: None
         results = []
         results_append = results.append
         for y in range_y:
             for x in range_x:
-                pos = (x, y)
-                point = matrix_get(pos, copy())
+                point = matrix_get((x, y), copy())
                 if point is not None:
                     result = [key for key, val in point.iteritems() if val == data]
                     if result:
@@ -567,8 +551,6 @@ class TileMatrixSector(Node):
                 sector_map[key] = [(z, sprite)]
 
         if to_be_added:
-            # layers = sorted(to_be_added.iteritems(), key=lambda item: item[0])
-            # for z, items in layers:
             # print 'adding'
             for z, items in to_be_added.iteritems():
                 # print z, items
@@ -576,16 +558,7 @@ class TileMatrixSector(Node):
                     layer = self.__tilematrix.get_layer(z)
                     if layer is None:
                         layer = self.__tilematrix.add_layer(z)
-                    # root_node = layer.find_node(name)
-                    # if root_node is None:
-                    #     root_node = Node(name=name)
-                    #     root_node.order_matters = False
-                    #     # root_node.pos = offset
-                    #     root_node.add_to(layer)
-                    #     # print 1, self.__offset
-                    # root_node.add_children([item[1] for item in items])
                     layer.add_children([item[1] for item in items])
-                    # self.hidden_tiles |= set(items)  # Do not hide with cached nodes.
 
     def remove_from_parent(self, cascade=True):
         # print 'remove_from_parent(%s)' % self
@@ -595,9 +568,6 @@ class TileMatrixSector(Node):
         for z, children in groups.iteritems():
             # print z, children
             layers[z].remove_children(children)
-            # node = layers[z].find_node(name)
-            # if node is not None:
-            #     layers[z].remove(node, cascade=True)
         self.__sector_map.clear()
         self.__all_sprites.clear()
         self.hidden_tiles.clear()
@@ -613,9 +583,6 @@ class TileMatrixSector(Node):
         for z, children in groups.iteritems():
             # print z, children
             layers[z].remove_children(children)
-            # node = layers[z].find_node(name)
-            # if node is not None:
-            #     layers[z].remove(node, cascade=True)
         self.__sector_map.clear()
         self.__all_sprites.clear()
         self.hidden_tiles.clear()
@@ -639,8 +606,7 @@ class TileMatrixSector(Node):
         return self.__sector_map.get((x, y), [])
 
     # @time
-    def set_sprites_at(self, points, hide=True, is_cacheable=True):
-        # TODO implement hide and is_cacheable.
+    def set_sprites_at(self, points):
         # print points
         pos = self.__sector_pos
         groups = dict()
@@ -758,113 +724,11 @@ class TileMatrixSector(Node):
             else:
                 # print 'reuse', z
                 repr_sprite._unload_frames()
-                # repr_sprite._load_frames()
                 repr_sprite.frames_is_dirty = True
-                # self.display.display_list_dirty = True
-                # texture = self.display.get_texture_instance(repr_image)
-                # rgba = repr_sprite.rgba_inherited
-                # rotation = repr_sprite.rotation  # TODO should use rotation_inherited
-                # texture_dl = self.display.get_texture_dl_instance(texture, rgba, rotation)
-                # # print repr_sprite.frame
-                # gamma = repr_sprite.gamma_inherited
-                # gamma_s = str(gamma)
-                # surfaces = {}
-                # surfaces[gamma_s] = repr_sprite.frame['frame_vault'].get_surface(gamma)
-                # repr_sprite.frame.update(dict(
-                #     texture=texture,
-                #     texture_dl=texture_dl,
-                #     surfaces=surfaces,
-                # ))
-                # repr_sprite.texture_is_dirty = True
-                # repr_sprite.is_dirty = True
                 repr_sprite._add_to_update_list()
-                # self.display.on_node_child_added(repr_sprite)
-                # repr_sprite._rebuild_frame_plan()
-                # self.pos_is_dirty = True
-                # self.pos_real_is_dirty = True
-                # self._add_to_update_list()
-                # self.update()
                 self.display.drawables_dl_dirty = True
 
             # print repr_sprite
-
-    # @time
-    # TODO Add support for disk cache.
-    def set_sprite_at_OLD(self, x, y, z, id, hide=True, is_cacheable=True):
-        # print('set_sprites_at(%s, %d, %d, %d, %s)' % (self, x, y, z, id))
-        groups = dict(self.__sector_map.get((x, y), {}))
-        print(groups)
-        tile = groups.get(z, None)
-
-        # Catch same id.
-        if tile is not None and tile.matrix_id == id:
-            print('existing tile is not None but same. keep it.')
-            return
-
-        layer = self.__tilematrix.get_layer(z)
-        if layer is None:
-            print('adding layer %d' % z)
-            layer = self.__tilematrix.add_layer(z)
-
-        # Remove existing tile?
-        if tile is not None:
-            print('existing tile is not None. remove it.')
-            id_ = tile.matrix_id
-            # print '*', tile
-            layer.remove(tile)
-            # Remove from all sprites registry.
-            all_sprites = self.__all_sprites
-            all_sprites[id_].remove(tile)
-            # Remove from sector map.
-            sector_map = self.__sector_map
-            key = (x, y)
-            groups = group_by(sector_map[key], key=lambda item: item[0], val=lambda item: item)
-            # print 1, groups[z]
-            # print 2, sector_map[key]
-            sector_map[key].remove(groups[z][0])
-
-        # Create new tile?
-        if id is not None:
-            print('new tile is not None. create it.')
-            if is_cacheable:
-                pass
-            else:
-                vault, s_id = self.__split_vault_and_id_from_path(id)
-                tile = Sprite.make(vault, s_id)
-                tile.is_cacheable = is_cacheable
-                tile.matrix_id = id
-                t_w, t_h = self.__tile_size
-                tile.pos = self.__offset[0] + t_w * x, self.__offset[1] + t_h * y
-                if hide:
-                    tile.hide()
-                # Add to all sprites registry.
-                all_sprites = self.__all_sprites
-                try:
-                    all_sprites[id].append(tile)
-                except:
-                    all_sprites[id] = [tile]
-                # Fill sector_map for later use.
-                sector_map = self.__sector_map
-                key = (x, y)
-                try:
-                    sector_map[key].append((z, tile))
-                except KeyError:
-                    sector_map[key] = [(z, tile)]
-                # Add tile to layer.
-                layer.add(tile)
-                if hide:
-                    self.hidden_tiles |= set([tile])
-                else:
-                    self.shown_tiles |= set([tile])
-
-        # print vault, s_id
-        # print tile
-
-        # Drop layer if empty.
-        # if layer is not None and len(layer.find_node(self.name).get_all_sprites()) == 0:
-        #     # print 'remove layer', z
-        #     # layer.parent_node.remove(layer, cascade=True)
-        #     self.__tilematrix.remove_layer(z)
 
     def get_sector_map(self):
         return self.__sector_map
@@ -1086,105 +950,6 @@ class TileMatrix(Node):
     def get_sector_size(self):
         return self.__sector_size
 
-    # TODO hopefully not necessary anymore.
-    # # @time
-    # def __update_tile_visibility(self):
-    #     if self.clipping_region_inherited is None:
-    #         return
-
-    #     # TODO do not show or hide with cached nodes.
-    #     return
-
-    #     # print '******'
-    #     t_w, t_h = self.__tile_size
-    #     clipping_region = self.clipping_region_inherited
-    #     s_w, s_h = (int(ceil((clipping_region.w + clipping_region.x) / float(t_w)) * t_w),
-    #                 int(ceil((clipping_region.h + clipping_region.y) / float(t_h)) * t_h))
-    #     # print 'screen size in pixels:', (s_w, s_h)
-    #     ss_w, ss_h = self.__sector_size
-    #     # print 'sector size in points:', (ss_w, ss_h)
-    #     sp_w = ss_w * t_w
-    #     sp_h = ss_h * t_h
-    #     # print 'sector size in pixels:', (sp_w, sp_h)
-
-    #     sectors = self.__last_visible_sectors
-
-    #     # full_sectors = set()
-    #     # clipped_sectors = set()
-    #     full_range_x = range(0, ss_w)
-    #     full_range_y = range(0, ss_h)
-    #     all_coords = set(((c_x, c_y) for c_x in full_range_x for c_y in full_range_y))
-
-    #     for pos, data in sectors.iteritems():
-    #         # print '*', pos, data
-    #         sector = data[1]
-    #         if sector is None:
-    #             continue
-    #         x, y = sector.pos_real_in_tree
-    #         # print 'pos:', x, y
-    #         sector_map = sector.get_sector_map()
-    #         # print sector_map
-    #         clipped_coords = set()
-
-    #         if x <= -t_w:
-    #             # print '\tsector should be clipped from left'
-    #             cur_range_x = range(0, -x // t_w - 1)
-    #             cur_range_y = full_range_y
-    #             # print 'range x:', cur_range_x
-    #             # print 'range y:', cur_range_y
-    #             clipped_coords |= set(((c_x, c_y) for c_x in cur_range_x for c_y in cur_range_y))
-    #         if y <= -t_h:
-    #             # print '\tsector should be clipped from top'
-    #             cur_range_x = full_range_x
-    #             cur_range_y = range(0, -y // t_h - 1)
-    #             # print 'range x:', cur_range_x
-    #             # print 'range y:', cur_range_y
-    #             clipped_coords |= set(((c_x, c_y) for c_x in cur_range_x for c_y in cur_range_y))
-
-    #         if x + sp_w >= s_w + t_w:
-    #             # print '\tsector should be clipped from right'
-    #             cur_range_x = range(ss_w - (x + sp_w - s_w) // t_w + 1, ss_w)
-    #             cur_range_y = full_range_y
-    #             # print 'range x:', cur_range_x
-    #             # print 'range y:', cur_range_y
-    #             clipped_coords |= set(((c_x, c_y) for c_x in cur_range_x for c_y in cur_range_y))
-    #         if y + sp_h >= s_h + t_h:
-    #             # print '\tsector should be clipped from bottom'
-    #             cur_range_x = full_range_x
-    #             cur_range_y = range(ss_h - (y + sp_h - s_h) // t_h + 1, ss_h)
-    #             # print 'range x:', cur_range_x
-    #             # print 'range y:', cur_range_y
-    #             clipped_coords |= set(((c_x, c_y) for c_x in cur_range_x for c_y in cur_range_y))
-
-    #         shown_coords = all_coords - clipped_coords
-    #         # print 'clipped coords:', clipped_coords
-    #         # print 'shown coords:', shown_coords
-    #         # shown_coords = all_coords
-
-    #         to_be_shown = set(chain(*[sector_map.get(coord, dict()) for coord in shown_coords]))
-    #         # print 'to_be_shown =', to_be_shown
-
-    #         to_be_hidden = set(chain(*[sector_map.get(coord, dict()) for coord in clipped_coords]))
-    #         # print 'to_be_hidden =', to_be_hidden
-
-    #         show_diff = to_be_shown - sector.shown_tiles
-    #         hide_diff = to_be_hidden - sector.hidden_tiles
-
-    #         if show_diff:
-    #             # print 'show_diff =', show_diff
-    #             sector.show_children(show_diff)
-    #             # if pos == (1, 0):
-    #             #     print len(show_diff)
-    #             #     for item in show_diff:
-    #             #         print item
-    #             #     print
-    #             #     print shown_coords
-    #             #     print all_coords
-    #             #     print clipped_coords  # <- problem resides here.
-    #         if hide_diff:
-    #             # print 'hide_diff =', hide_diff
-    #             sector.hide_children(hide_diff)
-
     # @time
     def update_sectors(self):
         if self.clipping_region_inherited is None:
@@ -1257,7 +1022,6 @@ class TileMatrix(Node):
         current_keys = set(sectors_to_display.keys())
 
         if last_keys == current_keys:
-            # self.__update_tile_visibility()
             return
 
         # Catch deleted sprites in temporary bin for eventual re-use.
@@ -1330,7 +1094,9 @@ class TileMatrix(Node):
                 #             print 'found wrong sprite %s in bin %s.' % (val.matrix_id, key)
                 #             exit()
                 offset = pos[0] * sp_w, pos[1] * sp_h
-                sector_ = TileMatrixSector(self, offset, matrix__get_rect(*rect),
+                matrix = matrix__get_rect(*rect)
+                # event.emit('tilematrix.sector.created.before', matrix)
+                sector_ = TileMatrixSector(self, offset, matrix,
                                            pos, self.__tile_size, self.__vaults,
                                            sprite_bin, self.show_sector_coords)
                 sector_.pos = offset
@@ -1345,7 +1111,6 @@ class TileMatrix(Node):
                 del sector_
 
         self.__last_visible_sectors = sectors_to_display
-        # self.__update_tile_visibility()
 
     def get_tile_id_at(self, x, y, z=None):
         value = self.__matrix.get_point(x, y, z)
@@ -1373,10 +1138,6 @@ class TileMatrix(Node):
             data = data.get(z, None)
         return data
 
-    def _is_tile_visible(self, sector, x, y):
-        # TODO SPEED decide if tile is visible or not. see __update_tile_visibility for reference.
-        return True
-
     def set_tiles_at(self, points, is_cacheable=True):
         sector_points = dict()
         matrix__get_point = self.__matrix.get_point
@@ -1398,110 +1159,13 @@ class TileMatrix(Node):
                 s_y = y // s_h
                 x -= s_x * s_w
                 y -= s_y * s_h
-                is_visible = self._is_tile_visible
-                # TODO reimplement default tile stuff.
-                # get_sprites_at = sector.get_sprites_at
-                # set_sprites_at = sector.set_sprites_at
-                # if id is not None:
-                #     # Check if default value has been set and remove it.
-                #     sprites = get_sprites_at(x, y)
-                #     point = self.__matrix.get_point(*new_point_data[:2])
-                #     # print '***', sprites, point
-                #     if sprites and not point:
-                #         for z_, sprite in sprites:
-                #             set_sprites_at(x, y, z_, None, is_cacheable=is_cacheable)
-                #     # Set new tile.
-                #     set_sprites_at(x, y, z, id, hide=not is_visible(sector, x, y), is_cacheable=is_cacheable)
-                # else:
-                #     # Drop old tile.
-                #     set_sprites_at(x, y, z, None, is_cacheable=is_cacheable)
-                #     sprites = get_sprites_at(x, y)
-                #     # Place default value if nothing left.
-                #     if not sprites:
-                #         default_value = self.__matrix.get_default_value()
-                #         if default_value is not None:
-                #             for key, val in default_value.iteritems():
-                #                 set_sprites_at(x, y, key, val, hide=not is_visible(sector, x, y), is_cacheable=is_cacheable)
-                # # self.__update_tile_visibility()
                 point_list.append((x, y, z, id))
             # else:
             #     raise SectorNotAvailableException()
             matrix__set_point(*new_point_data)
         # print len(sector_points)
         for sector, point_list in sector_points.iteritems():
-            sector.set_sprites_at(point_list, hide=not is_visible(sector, x, y), is_cacheable=is_cacheable)
-
-    # @time
-    # TODO We probably should just rebuild the sector instead of writing many points.
-    # TODO It would also be better to have this in the matrix config file. Switching in between is not a good idea.
-    def set_default_tile_value(self, value):
-        raise NotImplemented()
-        is_visible = self._is_tile_visible
-        if value is not None:
-            # print 'set to value.', value
-            if self.__matrix.get_default_value() == value:
-                # print 'default value already set:', value
-                return
-            self.__matrix.set_default_value(value)
-            # Add default tiles to sectors.
-            s_w, s_h = self.__sector_size
-            range_x = range(0, s_w)
-            range_y = range(0, s_h)
-            get_point = self.__matrix.get_point
-            for s_pos, data in self.__last_visible_sectors.iteritems():
-                # print '*', s_pos
-                # print data
-                sector = data[1]
-                # TODO move the following code into the sector itself.
-                get_sprites_at = sector.get_sprites_at
-                set_sprites_at = sector.set_sprites_at
-                for y in range_y:
-                    for x in range_x:
-                        pos = s_pos[0] * s_w + x, s_pos[1] * s_h + y
-                        point = get_point(*pos)
-                        # if point:
-                        #     print 'x, y =', (x, y),
-                        #     print 'pos =', (pos),
-                        #     print point
-                        sprites = get_sprites_at(x, y)
-                        if not sprites:
-                            # if point:
-                            #     print 'POINT SET!'
-                            for key, val in value.iteritems():
-                                set_sprites_at([(x, y, key, val)], hide=not is_visible(sector, x, y))
-            # self.__update_tile_visibility()
-        else:
-            # print 'set to none.'
-            # Remove default tiles from sectors.
-            s_w, s_h = self.__sector_size
-            default_value = self.__matrix.get_default_value()
-            if default_value is None:
-                # print 'default value is already none.'
-                return
-            range_x = range(0, s_w)
-            range_y = range(0, s_h)
-            get_point = self.__matrix.get_point
-            for s_pos, data in self.__last_visible_sectors.iteritems():
-                # print '*', s_pos
-                # print data
-                sector = data[1]
-                # TODO move the following code into the sector itself.
-                get_sprites_at = sector.get_sprites_at
-                set_sprites_at = sector.set_sprites_at
-                for y in range_y:
-                    for x in range_x:
-                        pos = s_pos[0] * s_w + x, s_pos[1] * s_h + y
-                        point = get_point(*pos)
-                        # if point:
-                        #     print 'x, y =', (x, y),
-                        #     print 'pos =', (pos),
-                        #     print point
-                        sprites = get_sprites_at(x, y)
-                        if sprites and not point:
-                            for z, sprite in sprites:
-                                set_sprites_at([(x, y, z, None)])
-            self.__matrix.set_default_value(None)
-            # self.__update_tile_visibility()
+            sector.set_sprites_at(point_list)
 
     def on_node_added(self, *args, **kwargs):
         super(TileMatrix, self).on_node_added(*args, **kwargs)
