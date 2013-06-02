@@ -556,7 +556,8 @@ class Node(object):
         if self.cached_tree_dirty:
             # print self
             # self.cached_tree = chain.from_iterable(child.get_tree_as_list() for child in self.child_nodes)
-            self.cached_tree = list(chain.from_iterable(child.get_tree_as_list() for child in self.child_nodes))
+            # We copy the child_nodes here because it might take longer and provoke race conditions.
+            self.cached_tree = list(chain.from_iterable(child.get_tree_as_list() for child in self.child_nodes.copy()))
             self.cached_tree_dirty = False
         items.extend(self.cached_tree)
         return items
