@@ -816,16 +816,10 @@ class TileMatrix(Node):
         self.lock = Lock()
         self.ticker = Ticker()
         self.ticker.start()
-        self.ticker.add(self.__update_sectors, 10, onetime=False, dropable=True)
+        self.ticker.add(self.__housekeeping, 16, onetime=False, dropable=True)
 
         # For our idle house keeping task.
-        self.__sector_drop_list = []
-        self.ticker.add(self.__drop_sectors, 500, onetime=False, dropable=True)
-        self.__sector_create_list = []
-        self.ticker.add(self.__create_sectors, 100, onetime=False, dropable=True)
-        from diamond.transition import TransitionManager
-        self.housekeeping = TransitionManager()
-        # self.housekeeping.start()
+        self.__sector_status = {}
 
         self.__listeners = [
             # Disabled in favor of the overridden methods below (speed).
@@ -833,7 +827,7 @@ class TileMatrix(Node):
             #                    instance__is=self),
             # event.add_listener(self.update_sectors, 'node.attached',
             #                    instance__is=self)
-            event.add_listener(self.housekeeping.tick, 'display.update.cpu_is_idle')
+            # event.add_listener(self.__housekeeping, 'display.update.cpu_is_idle')
         ]
 
     # def update(self):
@@ -841,8 +835,7 @@ class TileMatrix(Node):
     #     self.__update_sectors()
 
     def __del__(self):
-        self.ticker.join()
-        # self.housekeeping.join()
+        # self.ticker.join()
         event.remove_listeners(self.__listeners)
         super(TileMatrix, self).__del__()
 
@@ -952,19 +945,31 @@ class TileMatrix(Node):
 
     def rebuild(self):
         # If already attached drop all sectors on display.
-        sprite_bin = self.__sprite_bin
+        # sprite_bin = self.__sprite_bin
         for key, data in self.__last_visible_sectors.iteritems():
             sector = data[1]
-            if sector is not None:
-                # print 'remove sector instance from display:', key, data
-                for key, sprites in sector.get_all_sprites().iteritems():
-                    try:
-                        sprite_bin[key].extend(sprites)
-                    except KeyError:
-                        sprite_bin[key] = sprites
-                sector.remove_from_parent()
+            if sector is True:
+                if key in self.__sector_status:
+                    self.__sector_status[key]['wanted'] = False
                 data[1] = None
-        self.__last_visible_sectors = dict()
+            elif sector is not None:
+                # print 'remove sector instance from display:', key, data
+                # for key, sprites in sector.get_all_sprites().iteritems():
+                #     try:
+                #         sprite_bin[key].extend(sprites)
+                #     except KeyError:
+                #         sprite_bin[key] = sprites
+                # sector.remove_from_parent()
+                try:
+                    self.__sector_status[key]['wanted'] = False
+                except KeyError:
+                    self.__sector_status[key] = dict(
+                        sector=sector,
+                        wanted=False,
+                        init_args=None,
+                    )
+                data[1] = None
+        # self.__last_visible_sectors = dict()
         self.__last_visibility_map_pos = (None, None), (None, None)
         self.update_sectors()
 
@@ -975,52 +980,32 @@ class TileMatrix(Node):
     def get_sector_size(self):
         return self.__sector_size
 
-    def update_sectors(self):
-        # self.ticker.add(self.__update_sectors, 30, onetime=True, dropable=True)
-        pass
-
     def __drop_sector(self, sector):
-        if not self.lock.acquire(False):
-            self.housekeeping.add_change(self.__drop_sector, args=[sector], delay=100)
-            return
-
-        # event.emit('tilematrix.sector.dropped.before', sector)
-        # print 'remove sector instance from display:', sector
-        # print len(sector_.get_all_sprites())
-        sprite_bin = self.__sprite_bin
-        for key, sprites in sector.get_all_sprites().iteritems():
-            try:
-                sprite_bin[key].extend(sprites)
-            except KeyError:
-                sprite_bin[key] = sprites
-        # NOTE Enable this loop for debugging only!
-        # for key, vals in sprite_bin.iteritems():
-        #     # print key
-        #     for val in vals:
-        #         # print val.vault.name, val.matrix_id
-        #         if val.vault.name != val.matrix_id:
-        #             print 'found sprite %s with wrong matrix_id %s.' % (val.vault.name, val.matrix_id)
-        #             exit()
-        #         if val.matrix_id != key:
-        #             print 'found wrong sprite %s in bin %s.' % (val.matrix_id, key)
-        #             exit()
-        sector.remove_from_parent()
-
-        self.lock.release()
-
-    def __drop_sectors(self):
-        drop_list = self.__sector_drop_list[:]
-        del self.__sector_drop_list[:]
-
-        for sector in drop_list:
-            self.housekeeping.add_change(self.__drop_sector, args=[sector], delay=100)
+        with self.lock:
+            event.emit('tilematrix.sector.dropped.before', sector)
+            # print 'remove sector instance from display:', sector
+            # print len(sector_.get_all_sprites())
+            sprite_bin = self.__sprite_bin
+            for key, sprites in sector.get_all_sprites().iteritems():
+                try:
+                    sprite_bin[key].extend(sprites)
+                except KeyError:
+                    sprite_bin[key] = sprites
+            # NOTE Enable this loop for debugging only!
+            # for key, vals in sprite_bin.iteritems():
+            #     # print key
+            #     for val in vals:
+            #         # print val.vault.name, val.matrix_id
+            #         if val.vault.name != val.matrix_id:
+            #             print 'found sprite %s with wrong matrix_id %s.' % (val.vault.name, val.matrix_id)
+            #             exit()
+            #         if val.matrix_id != key:
+            #             print 'found wrong sprite %s in bin %s.' % (val.matrix_id, key)
+            #             exit()
+            sector.remove_from_parent()
 
     # @time
     def __create_sector(self, *args):
-        if not self.lock.acquire(False):
-            self.housekeeping.add_change(self.__create_sector, args=args, delay=16)
-            return
-
         key, ss_w, ss_h, sp_w, sp_h, data = args
         sprite_bin = self.__sprite_bin
 
@@ -1047,26 +1032,30 @@ class TileMatrix(Node):
                                    sprite_bin, self.show_sector_coords)
         sector_.pos = offset
         # print sector_.pos
-        # Only attach sector_ if really necessary.
-        # TODO Find a smarter solution not having to create it in the first way!
-        # if self.show_sector_coords or sector_.get_layers():
-        sector_.add_to(self.__sector_node)
-        data[1] = sector_
-        event.emit('tilematrix.sector.created.after', sector_)
+        with self.lock:
+            # Only attach sector_ if really necessary.
+            # TODO Find a smarter solution not having to create it in the first way!
+            # if self.show_sector_coords or sector_.get_layers():
+            sector_.add_to(self.__sector_node)
+            data[1] = sector_
+            event.emit('tilematrix.sector.created.after', sector_)
         # TODO can we somehow sync animations of same tiles?
         # del sector_
+        return sector_
 
-        self.lock.release()
-
-    def __create_sectors(self):
-        create_list = self.__sector_create_list[:]
-        del self.__sector_create_list[:]
-
-        for args in create_list:
-            self.housekeeping.add_change(self.__create_sector, args=args, delay=10)
+    def __housekeeping(self):
+        for key, data in self.__sector_status.copy().iteritems():
+            wanted, sector, init_args = data['wanted'], data['sector'], data['init_args']
+            if not wanted and sector is not None:
+                self.__drop_sector(sector)
+                data['sector'] = None
+            elif wanted and sector is None:
+                data['sector'] = self.__create_sector(*init_args)
+            if self.display.clock.get_time() < 10:
+                break
 
     # @time
-    def __update_sectors(self):
+    def update_sectors(self):
         if self.clipping_region_inherited is None:
             return
 
@@ -1155,8 +1144,12 @@ class TileMatrix(Node):
         for key in keys_to_be_removed:
             data = last_visible_sectors[key]
             sector_ = data[1]
-            if sector_ is not None:
-                event.emit('tilematrix.sector.dropped.before', sector_)
+            if sector_ is True:
+                if key in self.__sector_status:
+                    self.__sector_status[key]['wanted'] = False
+                data[1] = None
+            elif sector_ is not None:
+                # event.emit('tilematrix.sector.dropped.before', sector_)
                 # print 'remove sector_ instance from display:', key, data
                 # print len(sector_.get_all_sprites())
                 # for key, sprites in sector_.get_all_sprites().iteritems():
@@ -1177,7 +1170,15 @@ class TileMatrix(Node):
                 #             exit()
                 # sector_.remove_from_parent()  # TODO move this removal into a idle housekeeping task.
                 # self.ticker.add(self.__drop_sectors, 1000, onetime=True, dropable=False)
-                self.__sector_drop_list.append(sector_)
+                # self.__sector_drop_list.append(sector_)
+                try:
+                    self.__sector_status[key]['wanted'] = False
+                except KeyError:
+                    self.__sector_status[key] = dict(
+                        sector=sector_,
+                        wanted=False,
+                        init_args=None,
+                    )
                 data[1] = None
                 # For now nobody needs this.
                 # event.emit('tilematrix.sector.dropped.after', sector_)
@@ -1189,6 +1190,14 @@ class TileMatrix(Node):
             # Copy instance into new view grid.
             # print 'keep sector instance on display', key, data
             sectors_to_display[key][1] = data[1]
+            try:
+                self.__sector_status[key]['wanted'] = True
+            except KeyError:
+                self.__sector_status[key] = dict(
+                    sector=data[1],
+                    wanted=True,
+                    init_args=None,
+                )
 
         # if not self.lock.acquire(False):
         #     return
@@ -1229,7 +1238,16 @@ class TileMatrix(Node):
                 # event.emit('tilematrix.sector.created.after', sector_)
                 # # TODO can we somehow sync animations of same tiles?
                 # del sector_
-                self.__sector_create_list.append((key, ss_w, ss_h, sp_w, sp_h, data))
+                data[1] = True
+                # self.__sector_create_list.append((key, ss_w, ss_h, sp_w, sp_h, data))
+                try:
+                    self.__sector_status[key]['wanted'] = True
+                except KeyError:
+                    self.__sector_status[key] = dict(
+                        sector=None,
+                        wanted=True,
+                        init_args=(key, ss_w, ss_h, sp_w, sp_h, data),
+                    )
 
         self.__last_visible_sectors = sectors_to_display
 
