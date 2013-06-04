@@ -37,7 +37,7 @@ class Fps(Font):
             nodes = len(self.display.get_root_node().get_node_tree_as_list())
             sprites = len(self.display.display_list)
             drawables = len(self.display._drawables)
-            text = '%d fps (avg %d), %d objs (%d nds, %d sprts, %d drwbls)' % (
+            text = '%.1f fps (avg %.1f), %d objs (%d nds, %d sprts, %d drwbls)' % (
                 fps, avg_flen, nodes + sprites, nodes, sprites, drawables)
         else:
             text = '%d fps' % fps

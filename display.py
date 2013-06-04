@@ -383,6 +383,7 @@ class Display(object):
         self.screen = None
         self.setup_screen(view_size, screen_size, flags, color_depth)
         self.clock = pygame.time.Clock()
+        self.frame_length_clock = pygame.time.Clock()
         pygame.mouse.set_visible(self.show_mouse_in_windowed_mode)
         self.set_fullscreen(fullscreen)
         self.is_dirty = True
@@ -661,7 +662,7 @@ class Display(object):
                 timestamp = self.ticker.get_ticks() + rel_timestamp
             else:
                 timestamp = timestamp - self.ticker.get_ticks()
-            self.ticker.add(self._add_to_update_list, timestamp, args=[ref(obj)], onetime=True)
+            self.ticker.add(self._add_to_update_list, timestamp, args=[obj], onetime=True)
 
     # @time
     def remove_from_update_list(self, obj):
@@ -753,20 +754,14 @@ class Display(object):
 
     # @time
     def update(self):
+        self.frame_length_clock.tick()
         # TODO Think of we really need to loop this. Usually we have items for about 2-3 iterations.
         if self.lock.acquire(False):
             update_list = chain(self.node_update_list.copy(), self.update_list.copy())
             self.node_update_list.clear()
             self.update_list.clear()
             self.lock.release()
-            # [item.update() for item in update_list]
-            for item in update_list:
-                try:
-                    item.update()
-                except AttributeError:
-                    # print item
-                    # raise
-                    pass
+            [item.update() for item in update_list]
             # print('updated %d items.' % len(update_list))
         if self.__child_to_be_removed:
             # print 'removed child =', self.__child_to_be_removed
@@ -774,22 +769,29 @@ class Display(object):
         if self.__children_to_be_removed:
             # print 'removed children =', list(self.__children_to_be_removed)
             self.__remove_children_from_lists()
-        if self.display_list_dirty:
-            self.rebuild_display_list()
-        if self.drawables_dirty:
-            self.rebuild_drawables()
-        if self.drawables_dl_dirty:
-            self.rebuild_drawables_dl()
-        # self.is_dirty = True  # NOTE for debugging only!
-        if self.is_dirty:
-            glCallList(self._drawables_dl)
-        is_idle = self.clock.get_time() <= int(round(1000.0 / self.framerate))
-        if is_idle:
+        self.frame_length_clock.tick()
+        elapsed_time, timeframe = self.frame_length_clock.get_time(), int(round(1000.0 / self.framerate))
+        # if elapsed_time > timeframe:
+        #     print elapsed_time, timeframe
+        if elapsed_time <= timeframe:
+            if self.display_list_dirty:
+                self.rebuild_display_list()
+            if self.drawables_dirty:
+                self.rebuild_drawables()
+            if self.drawables_dl_dirty:
+                self.rebuild_drawables_dl()
+            # self.is_dirty = True  # NOTE for debugging only!
+            if self.is_dirty:
+                glCallList(self._drawables_dl)
+        # else:
+        #     print elapsed_time, timeframe
+        self.frame_length_clock.tick()
+        if elapsed_time + self.frame_length_clock.get_time() <= timeframe:
             # print 'do some idle tasks'
             event.emit('display.update.cpu_is_idle', self)
         # else:
         #     print 'busy'
-        if self.is_dirty:
+        if self.is_dirty and elapsed_time <= timeframe:
             self.is_dirty = False
             self.clock.tick()
             # flip() may reduce FPS to e.g. 60 if vsync is enabled.
