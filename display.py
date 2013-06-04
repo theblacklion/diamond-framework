@@ -82,7 +82,7 @@ from diamond.helper import image
 from diamond.helper.ordered_set import OrderedSet
 from diamond import event
 from diamond.ticker import Ticker
-from threading import Lock
+from threading import RLock
 from diamond.decorators import time
 
 
@@ -358,15 +358,15 @@ class Display(object):
         self.maximize_fullscreen = maximize_fullscreen
         self.fullscreen_enabled = False
         self.fullscreen_pseudo = False
-        self.update_list = set()
-        self.node_update_list = set()
+        self.update_list = set()  # TODO replace with Python Queue and remove RLock.
+        self.node_update_list = set()  # TODO replace with Python Queue and remove RLock.
         self.display_list = []
         self.display_list_dirty = True
         self._drawables = []
         self.drawables_dirty = False
         self._drawables_dl = None
         self.drawables_dl_dirty = True
-        self.lock = Lock()
+        self.lock = RLock()
         self.ticker = Ticker(limit=10000)
         self.ticker.start()
         self.__child_to_be_removed = None
