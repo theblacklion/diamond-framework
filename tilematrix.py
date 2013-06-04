@@ -19,7 +19,7 @@ from math import floor, ceil
 from itertools import chain
 from collections import OrderedDict
 from weakref import proxy
-from threading import Lock
+from threading import RLock
 
 import pygame
 
@@ -813,7 +813,7 @@ class TileMatrix(Node):
         self.__sector_node.set_order_pos(1000)
         self.__sector_node.add_to(self)
 
-        self.lock = Lock()
+        self.lock = RLock()
         self.ticker = Ticker()
         self.ticker.start()
         self.ticker.add(self.__housekeeping, 16, onetime=False, dropable=True)
@@ -1266,7 +1266,8 @@ class TileMatrix(Node):
         s_w, s_h = self.__sector_size
         s_x = x // s_w
         s_y = y // s_h
-        return self.__last_visible_sectors.get((s_x, s_y), [None, None])[1]
+        sector = self.__last_visible_sectors.get((s_x, s_y), [None, None])[1]
+        return sector if sector is not True else None
 
     # @time
     def get_tile_at(self, x, y, z=None):
