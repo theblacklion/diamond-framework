@@ -36,6 +36,7 @@ class Scene(object):
         self.__bound_tickers = set()
         self.__bound_threads = set()
         self.__managed_objects = set()
+        self.is_paused = False
 
     def setup(self):
         '''
@@ -172,20 +173,26 @@ class Scene(object):
         [ticker.tick() for ticker in self.__bound_tickers]
 
     def pause(self):
-        [ticker.pause() for ticker in self.__bound_tickers]
-        [thread.pause() for thread in self.__bound_threads]
+        if not self.is_paused:
+            [ticker.pause() for ticker in self.__bound_tickers]
+            [thread.pause() for thread in self.__bound_threads]
+            self.is_paused = True
 
     def unpause(self):
-        [ticker.unpause() for ticker in self.__bound_tickers]
-        [thread.unpause() for thread in self.__bound_threads]
+        if self.is_paused:
+            [ticker.unpause() for ticker in self.__bound_tickers]
+            [thread.unpause() for thread in self.__bound_threads]
+            self.is_paused = False
 
     def show(self):
         '''Transition for showing a scene.'''
-        self.root_node.show()
+        if self.root_node.is_hidden:
+            self.root_node.show()
 
     def hide(self):
         '''Transition for hiding a scene.'''
-        self.root_node.hide()
+        if not self.root_node.is_hidden:
+            self.root_node.hide()
 
     def on_quit_event(self, context):
         raise QuitSceneEvent()
