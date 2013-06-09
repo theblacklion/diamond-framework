@@ -48,7 +48,7 @@ class Selection(object):
             x, y = pos
             points_.append((x, y, z, None))
             del selection[pos]
-        tilematrix.set_tiles_at(points_, is_cacheable=False)
+        tilematrix.set_tiles_at(points_)
 
     def add_selection(self, alias, points, translate_pos=False):
         selection = self.selection[alias]
@@ -67,7 +67,7 @@ class Selection(object):
             if z in id:
                 del id[z]
             selection[(x, y)] = id
-        tilematrix.set_tiles_at(points_, is_cacheable=False)
+        tilematrix.set_tiles_at(points_)
 
     def set_selection(self, alias, points, translate_pos=False):
         selection = self.selection[alias]

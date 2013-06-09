@@ -835,7 +835,8 @@ class TileMatrix(Node):
     #     self.__update_sectors()
 
     def __del__(self):
-        # self.ticker.join()
+        # print 'del'
+        self.ticker.join()
         event.remove_listeners(self.__listeners)
         super(TileMatrix, self).__del__()
 
@@ -1038,6 +1039,9 @@ class TileMatrix(Node):
             # if self.show_sector_coords or sector_.get_layers():
             sector_.add_to(self.__sector_node)
             data[1] = sector_
+            # Only update if already present.
+            if key in self.__last_visible_sectors:
+                self.__last_visible_sectors[key][1] = sector_
             event.emit('tilematrix.sector.created.after', sector_)
         # TODO can we somehow sync animations of same tiles?
         # del sector_
@@ -1267,6 +1271,9 @@ class TileMatrix(Node):
         s_x = x // s_w
         s_y = y // s_h
         sector = self.__last_visible_sectors.get((s_x, s_y), [None, None])[1]
+        # print sector
+        # print self.__last_visible_sectors.get((s_x, s_y))
+        # print self.__sector_status.get((s_x, s_y))
         return sector if sector is not True else None
 
     # @time
@@ -1280,7 +1287,7 @@ class TileMatrix(Node):
             data = data.get(z, None)
         return data
 
-    def set_tiles_at(self, points, is_cacheable=True):
+    def set_tiles_at(self, points):
         sector_points = dict()
         matrix__get_point = self.__matrix.get_point
         matrix__set_point = self.__matrix.set_point
