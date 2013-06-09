@@ -8,7 +8,7 @@ from inspect import getargspec
 from itertools import takewhile
 from types import FunctionType
 
-from pygame.time import get_ticks
+from pygame.time import get_ticks, wait
 
 from diamond import event
 from diamond.helper.weak_ref import Wrapper
@@ -66,6 +66,7 @@ class Ticker(AbstractThread):
         # print 'Init ticker:', self
         # import traceback
         # traceback.print_stack()
+        self.is_idle = True
 
     def teardown(self):
         self.clear()
@@ -89,6 +90,9 @@ class Ticker(AbstractThread):
         if not self.__is_paused:
             # print 'Ticker.pause(%s)' % self
             self.__is_paused = get_ticks()
+        # Wait until our tick() is done. Usefull if tick is being called in a thread or via versa.
+        while not self.is_idle:
+            wait(5)
 
     def unpause(self):
         if self.__is_paused:
@@ -176,11 +180,15 @@ class Ticker(AbstractThread):
     # @dump_args
     def clear(self):
         self.tickers.clear()
+        # Wait until our tick() is done. Usefull if tick is being called in a thread or via versa.
+        while not self.is_idle:
+            wait(5)
 
     def tick(self):
         # print 'Ticker.tick(%s) got %d tickers' % (self, len(self.tickers))
-        if self.__is_paused:
+        if self.__is_paused or not self.is_idle:
             return
+        self.is_idle = False
         if self.is_dirty:
             # tickers = self.tickers.copy()
             # self.tickers.clear()
@@ -256,7 +264,8 @@ class Ticker(AbstractThread):
         # if count or len(to_be_removed):
         #     print 'executed %d tickers ; removed %d tickers' % (count, len(to_be_removed))
 
-        return self.tickers[0][2] if self.tickers else None
+        self.is_idle = True
+        # return self.tickers[0][2] if self.tickers else None
 
     def join(self):
         event.remove_listeners(self.listeners)
