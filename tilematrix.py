@@ -840,17 +840,38 @@ class TileMatrix(Node):
         event.remove_listeners(self.__listeners)
         super(TileMatrix, self).__del__()
 
-    # This is faster but should be kept in sync with code from Node class.
+    # BEGIN: Overrides of node methods for making them thread safe.
     def _update_real_pos_in_tree(self, *args, **kwargs):
         with self.lock:
             if super(TileMatrix, self)._update_real_pos_in_tree(*args, **kwargs):
                 self.update_sectors()
 
-    # This is faster but should be kept in sync with code from Node class.
     def attach_to_display(self, *args, **kwargs):
+        self.ticker.pause()
         with self.lock:
             super(TileMatrix, self).attach_to_display(*args, **kwargs)
             self.update_sectors()
+        self.ticker.unpause()
+
+    def show(self, *args, **kwargs):
+        self.ticker.pause()
+        with self.lock:
+            super(TileMatrix, self).show(*args, **kwargs)
+            self.update_sectors()
+        self.ticker.unpause()
+
+    def hide(self, *args, **kwargs):
+        self.ticker.pause()
+        with self.lock:
+            super(TileMatrix, self).hide(*args, **kwargs)
+        self.ticker.unpause()
+
+    def update_inherited_rgba(self, *args, **kwargs):
+        self.ticker.pause()
+        with self.lock:
+            super(TileMatrix, self).update_inherited_rgba(*args, **kwargs)
+        self.ticker.unpause()
+    # END: Overrides of node methods for making them thread safe.
 
     def load_vault(self, vault, alias):
         self.__vaults[alias] = vault
@@ -1057,6 +1078,12 @@ class TileMatrix(Node):
                 data['sector'] = self.__create_sector(*init_args)
             if self.display.clock.get_time() < 10:
                 break
+
+    def pause_housekeeping(self):
+        self.ticker.pause()
+
+    def unpause_housekeeping(self):
+        self.ticker.unpause()
 
     # @time
     def update_sectors(self):
