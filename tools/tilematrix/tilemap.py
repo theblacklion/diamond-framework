@@ -144,6 +144,15 @@ class TilemapScene(Scene):
             # event.add_listener(self.__on_debug_event, 'scene.event.system'),
         )
 
+    def hide(self):
+        super(TilemapScene, self).hide()
+        self.pause()
+
+    def show(self):
+        super(TilemapScene, self).show()
+        self._cursor_pos = pygame.mouse.get_pos()
+        self.unpause()
+
     def __on_debug_event(self, context):
         print(context)
 
