@@ -69,8 +69,10 @@ class TilemapScene(Scene):
         tilematrix.add_to(self.root_node)
         self.tilematrix = tilematrix
 
-        self.camera = Camera(tilematrix, self)
-        self.camera_ticker.add(self.camera.tick, 16)
+        # We don't hold a ref to our camera - it holds this scene already and
+        # would result in the gc not being able to clean us up properly.
+        camera = Camera(tilematrix, self)
+        self.camera_ticker.add(camera.tick, 16)
 
         self.__default_cursor = pygame.mouse.get_cursor()
         self._cursor_pos = (0, 0)
