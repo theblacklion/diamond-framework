@@ -806,7 +806,7 @@ class TileMatrix(Node):
         self.order_matters = True  # Keep our layers in order.
 
         self.show_sector_coords = False
-        # self.track_movement = True  # Not necessary without the events above.
+        # self.track_movement = True  # Not necessary without the events below.
 
         self.__sector_node = Node('TileMatrixSectors')
         self.__sector_node.order_matters = False
@@ -835,7 +835,9 @@ class TileMatrix(Node):
     #     self.__update_sectors()
 
     def __del__(self):
-        # print 'del'
+        # print 'del', self
+        # print self.__sprite_bin
+        # print self.__last_visible_sectors
         self.ticker.join()
         event.remove_listeners(self.__listeners)
         super(TileMatrix, self).__del__()
@@ -871,6 +873,17 @@ class TileMatrix(Node):
         with self.lock:
             super(TileMatrix, self).update_inherited_rgba(*args, **kwargs)
         self.ticker.unpause()
+
+    def remove_all(self, *args, **kwargs):
+        self.ticker.clear()
+        super(TileMatrix, self).remove_all(*args, **kwargs)
+
+    def on_node_removed(self, *args, **kwargs):
+        # print 'on_node_removed(%s)' % self
+        self.ticker.clear()
+        self.__sector_status.clear()
+        self.__last_visible_sectors.clear()
+        super(TileMatrix, self).on_node_removed(*args, **kwargs)
     # END: Overrides of node methods for making them thread safe.
 
     def load_vault(self, vault, alias):
@@ -1160,7 +1173,7 @@ class TileMatrix(Node):
             return
 
         # Catch deleted sprites in temporary bin for eventual re-use.
-        sprite_bin = self.__sprite_bin
+        # sprite_bin = self.__sprite_bin
 
         keys_to_be_removed = last_keys - current_keys
         keys_to_be_added = current_keys - last_keys
