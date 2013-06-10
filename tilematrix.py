@@ -874,6 +874,12 @@ class TileMatrix(Node):
             super(TileMatrix, self).update_inherited_rgba(*args, **kwargs)
         self.ticker.unpause()
 
+    def update_inherited_gamma(self, *args, **kwargs):
+        self.ticker.pause()
+        with self.lock:
+            super(TileMatrix, self).update_inherited_gamma(*args, **kwargs)
+        self.ticker.unpause()
+
     def remove_all(self, *args, **kwargs):
         self.ticker.clear()
         super(TileMatrix, self).remove_all(*args, **kwargs)
