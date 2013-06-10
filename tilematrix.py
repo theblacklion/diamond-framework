@@ -1095,7 +1095,7 @@ class TileMatrix(Node):
                 data['sector'] = None
             elif wanted and sector is None:
                 data['sector'] = self.__create_sector(*init_args)
-            if self.display.clock.get_time() < 10:
+            if self.display.frame_length_clock.get_time() > 30:
                 break
 
     def pause_housekeeping(self):
