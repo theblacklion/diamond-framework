@@ -228,7 +228,7 @@ class Font(Sprite):
 
     def __repr__(self):
         pos = '%s,%s' % self.pos
-        name = 'Font.Sprite(%s@%s)' % (self.font.name, pos)
+        name = 'Font.Sprite(%s@%s;"%s")' % (self.font.name, pos, self.text)
         if self.parent_node:
             return '<%s -> %s>' % (self.parent_node, name)
         else:
