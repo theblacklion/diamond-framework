@@ -122,7 +122,7 @@ class OrderedSet(collections.MutableSet):
         if index >= len(self.map) or index < 0:
             # print index, len(self.map), self.map
             raise IndexError('set index out of range')
-        iterable = iter(self)
+        iterable = iter(OrderedSet(self))
         curr = next(iterable)
         for count in xrange(0, index):
             try:
