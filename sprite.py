@@ -226,6 +226,8 @@ class Sprite(object):
             for frame in frames_:
                 surfaces = {}
                 surfaces[gamma_s] = frame.get_surface(gamma)
+                masks = {}
+                masks[gamma_s] = frame.get_mask(gamma)
                 texture = get_texture_instance(surfaces[gamma_s])
                 texture_dl = get_texture_dl_instance(texture, rgba, rotation)
                 action_.append(dict(
@@ -233,6 +235,7 @@ class Sprite(object):
                     texture_dl=texture_dl,
                     frame_vault=frame,
                     surfaces=surfaces,
+                    masks=masks,
                     current_gamma=gamma,
                 ))
         self.frame = self.frames[self.action][self.frame_no]
@@ -258,10 +261,12 @@ class Sprite(object):
                 #      cache the vaults and just return the DLs.
                 last_gamma = frame['current_gamma']
                 surfaces = frame['surfaces']
+                masks = frame['masks']
                 if last_gamma != gamma:
                     # print 'last =', last_gamma, 'cur =', gamma
                     if gamma_s not in surfaces:
                         surfaces[gamma_s] = frame['frame_vault'].get_surface(gamma)
+                        masks[gamma_s] = frame['frame_vault'].get_mask(gamma)
                         # print 'add surface', gamma_s, surfaces[gamma_s]
                     texture = get_texture_instance(surfaces[gamma_s])
                     frame.update(dict(
@@ -557,7 +562,8 @@ class Sprite(object):
         '''
         if self.pos_real_in_tree is None:
             self._recalc_real_pos()
-        return pygame.Rect(self.pos_real_in_tree[0], self.pos_real_in_tree[1], self.size[0], self.size[1])
+        pos = self.pos_real_in_tree if self.pos_real_in_tree is not None else (0, 0)
+        return pygame.Rect(pos[0], pos[1], self.size[0], self.size[1])
 
     # @time
     def attach_to_display(self, load=True, display=None):
