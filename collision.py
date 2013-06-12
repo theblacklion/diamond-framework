@@ -60,11 +60,13 @@ class Collision(object):
             self.__active_collisions = results
             if added or removed:
                 event.emit('%s.state.changed' % self.__name, dict(
-                    source=source, targets_added=added, targets_removed=removed,
+                    source=source, targets=results,
+                    targets_added=added, targets_removed=removed,
                 ))
         elif self.__active_collisions:
             last_results = self.__active_collisions
             self.__active_collisions = set()
             event.emit('%s.state.changed' % self.__name, dict(
-                source=source, targets_added=set(), targets_removed=last_results,
+                source=source, targets=set(),
+                targets_added=set(), targets_removed=last_results,
             ))
