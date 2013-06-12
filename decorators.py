@@ -82,13 +82,13 @@ def time(func):
         for line in contents.rstrip().split('\n'):
             print('  %s' % line)
 
-        try:
+        if func_name in time_stats:
             time_stats[func_name].append(stop - start)
-        except KeyError:
+        else:
             time_stats[func_name] = [stop - start]
 
         if excp:
-            raise excp
+            raise
 
         return result
     wrapper.__wrapped__ = func
