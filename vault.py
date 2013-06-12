@@ -80,6 +80,7 @@ class VaultSpriteActionFrame(object):
         self.duration = duration
         self.vault_sprite_action = proxy(vault_sprite_action) if type(vault_sprite_action) not in ProxyTypes else vault_sprite_action
         self.surfaces = {}
+        self.masks = {}
         self.pos_modifier = None
         self.__recalc_pos_modifier()
         if events is None:
@@ -136,6 +137,14 @@ class VaultSpriteActionFrame(object):
                     surface.blit(part, (x, y))
                 self.surfaces[gamma_s] = surface
         return self.surfaces[gamma_s]
+
+    def get_mask(self, gamma=1.0):
+        gamma_s = str(gamma)
+        if gamma_s not in self.masks:
+            surface = self.get_surface(gamma)
+            mask = pygame.mask.from_surface(surface)
+            self.masks[gamma_s] = mask
+        return self.masks[gamma_s]
 
     def get_action(self):
         return self.vault_sprite_action
