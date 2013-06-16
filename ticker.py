@@ -253,6 +253,9 @@ class Ticker(AbstractThread):
                 func(*args, **kwargs)
             except BreakTickerLoop:
                 break_out = True
+            except Exception:
+                self.is_idle = True  # Release lock (wait(), join() etc.).
+                raise
             if type(ticker) is OnetimeTick:
                 mark_outdated(ticker)
             else:
