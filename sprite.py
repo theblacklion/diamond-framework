@@ -565,6 +565,15 @@ class Sprite(object):
         pos = self.pos_real_in_tree if self.pos_real_in_tree is not None else (0, 0)
         return pygame.Rect(pos[0], pos[1], self.size[0], self.size[1])
 
+    def get_bounding_rect(self):
+        if self.pos_real_in_tree is None:
+            self._recalc_real_pos()
+        pos = self.pos_real_in_tree if self.pos_real_in_tree is not None else (0, 0)
+        rect = self.frame['frame_vault'].get_bounding_rect()
+        rect.x += pos[0]
+        rect.y += pos[1]
+        return rect
+
     # @time
     def attach_to_display(self, load=True, display=None):
         if display:

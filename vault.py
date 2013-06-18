@@ -75,6 +75,7 @@ class VaultSpriteActionFrame(object):
             self.is_piggyback = False
 
         self.rect = rect
+        self.__bounding_rect = {}
         self.hotspot = hotspot
         self.delta = delta
         self.duration = duration
@@ -137,6 +138,12 @@ class VaultSpriteActionFrame(object):
                     surface.blit(part, (x, y))
                 self.surfaces[gamma_s] = surface
         return self.surfaces[gamma_s]
+
+    def get_bounding_rect(self, min_alpha=1):
+        if min_alpha not in self.__bounding_rect:
+            surface = self.get_surface()
+            self.__bounding_rect[min_alpha] = surface.get_bounding_rect(min_alpha)
+        return self.__bounding_rect[min_alpha].copy()
 
     def get_mask(self, gamma=1.0):
         gamma_s = str(gamma)
