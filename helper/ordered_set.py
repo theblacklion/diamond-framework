@@ -116,20 +116,22 @@ class OrderedSet(collections.MutableSet):
         If you do this multiple times in a row you might want to create a list
         from this and continue to work with it instead.
         '''
-        # print index, len(self.map)
+        set = OrderedSet(self)
+        length = len(set.map)
+        # print index, length
         if index < 0:
-            index = len(self.map) + index
-        if index >= len(self.map) or index < 0:
-            # print index, len(self.map), self.map
+            index = length + index
+        if index >= length or index < 0:
+            # print index, length, self.map
             raise IndexError('set index out of range')
-        iterable = iter(OrderedSet(self))
+        iterable = iter(set)
         curr = next(iterable)
         for count in xrange(0, index):
             try:
                 curr = next(iterable)
             except StopIteration:
-                print self
-                print len(self.map), index, count
+                print set
+                print length, index, count
                 raise
         return curr
 
