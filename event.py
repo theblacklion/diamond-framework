@@ -41,6 +41,7 @@ proxy_rules = set([
 ])
 
 proxy_context_rules = set([
+    '__contains',
     '__is',
     '__is_not',
 ])
@@ -169,7 +170,13 @@ def emit(event_name, context=None):
         filters = listener.filters
 
         # Resolve weak ref.
-        func = func.resolve()
+        try:
+            func = func.resolve()
+        except ReferenceError:
+            # It might happen that a race conditions brings us here.
+            listeners[event_name].remove(listener)
+            # print 'removed stale listener: %s' % listener
+            continue
 
         matching_failed = False
         # print 'event iteration =', func, filters
