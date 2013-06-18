@@ -63,6 +63,10 @@ class Collision(object):
                     source=source, targets=results,
                     targets_added=added, targets_removed=removed,
                 ))
+            else:
+                event.emit('%s.state' % self.__name, dict(
+                    source=source, targets=results,
+                ))
         elif self.__active_collisions:
             last_results = self.__active_collisions
             self.__active_collisions = set()
