@@ -602,7 +602,7 @@ class Node(object):
             # Avoid function calls by not calling the childs method.
             # Keep in sync with Sprite._recalc_real_pos_in_tree !
             # [child._recalc_real_pos_in_tree() for child in self.child_sprites]
-            for child in self.child_sprites:
+            for child in self.child_sprites | self.child_sprites_hidden:
                 try:
                     px, py = self.pos_real_in_tree
                     ix, iy = child.pos_real
@@ -618,7 +618,7 @@ class Node(object):
             if self.track_movement:
                 event.emit('node.moved', self)
             # Now tell display to call us.
-            self._add_to_update_list()
+            self._add_to_update_list()  # TODO really necessary?
             return True
         return False
 
