@@ -618,7 +618,7 @@ class Node(object):
             if self.track_movement:
                 event.emit('node.moved', self)
             # Now tell display to call us.
-            self._add_to_update_list()  # TODO really necessary?
+            # self._add_to_update_list()  # TODO really necessary?
             return True
         return False
 
