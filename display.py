@@ -30,7 +30,7 @@ try:
         # GL_GREATER, GL_ALPHA_TEST,
         GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER,
         GL_NEAREST, GL_RGBA, GL_UNSIGNED_BYTE, GL_COMPILE,
-        # GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE,
+        GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TEXTURE_WRAP_R, GL_CLAMP,
         # GL_QUADS,
         GL_TRIANGLE_STRIP,
         glEnable, glClearColor, glClear, glBlendFunc, glMatrixMode,
@@ -105,9 +105,9 @@ class Texture(object):
             glBindTexture(GL_TEXTURE_2D, texture)
             glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
             glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-            # glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
-            # glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
-            # glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE)
+            # glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
+            # glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
+            # glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP)
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data)
             Texture.__textures[cache_id] = [texture, 1]
@@ -253,10 +253,14 @@ class TextureDl(object):
         # glTexCoord2f(x2, y1); glVertex2f(width,      0)  # Bottom right of the texture and quad.
         # glEnd()
         glBegin(GL_TRIANGLE_STRIP)
-        glTexCoord2f(x1, y1); glVertex2f(0, 0)
-        glTexCoord2f(x1, y2); glVertex2f(0, height)
-        glTexCoord2f(x2, y1); glVertex2f(width, 0)
-        glTexCoord2f(x2, y2); glVertex2f(width, height)
+        glTexCoord2f(x1, y1)
+        glVertex2f(0, 0)
+        glTexCoord2f(x1, y2)
+        glVertex2f(0, height)
+        glTexCoord2f(x2, y1)
+        glVertex2f(width, 0)
+        glTexCoord2f(x2, y2)
+        glVertex2f(width, height)
         glEnd()
 
         # # TODO create blending masks?
@@ -333,31 +337,41 @@ class TextureDl(object):
 class Display(object):
 
     def __init__(self, screen_size=(640, 480), fullscreen=False,
-                      color_depth=0, framerate=60, use_hw_accel=True,
-                      scaling=1.0,
-                      show_mouse_in_windowed_mode=True,
-                      show_mouse_in_fullscreen_mode=False,
-                      auto_center_mouse_on_screen=False,
-                      expand_in_fullscreen=False,
-                      maximize_fullscreen=False,
-                      vsync=True):
+                 color_depth=0, framerate=60, use_hw_accel=True,
+                 window_scaling=1.0,
+                 show_mouse_in_windowed_mode=True,
+                 show_mouse_in_fullscreen_mode=False,
+                 auto_center_mouse_on_screen=False,
+                 vsync=True):
         super(Display, self).__init__()
         hwinfo = pygame.display.Info()
         # print hwinfo
-        self.view_size = hwinfo.current_w, hwinfo.current_h
+        self.view_size = view_size = hwinfo.current_w, hwinfo.current_h
+        if screen_size[0] < 0:
+            height_factor = view_size[1] / float(screen_size[1])
+            # print 1, height_factor
+            width = height_factor * abs(screen_size[0])
+            # print 2, width
+            x = view_size[0] - width
+            # print x
+            screen_size = abs(screen_size[0]) + int(x / height_factor), screen_size[1]
+        elif screen_size[1] < 0:
+            width_factor = view_size[0] / float(screen_size[0])
+            height = width_factor * abs(screen_size[1])
+            y = view_size[1] - height
+            screen_size = screen_size[0], abs(screen_size[1]) + int(y / width_factor)
+        elif screen_size[0] < 0 and screen_size[1] < 0:
+            raise Exception('Only width or height of screen_size can be auto-adjusted. Got: %s' % screen_size)
         self.screen_size = screen_size
-        self.screen_size_org = screen_size  # Backup of original screen size.
+        # print screen_size
         flags = locals_.OPENGL | locals_.DOUBLEBUF
         if use_hw_accel:  # TODO is this necessary with OpenGL anymore?
             flags |= locals_.HWSURFACE
-        self.scaling = scaling
+        self.window_scaling = window_scaling
         self.show_mouse_in_windowed_mode = show_mouse_in_windowed_mode
         self.show_mouse_in_fullscreen_mode = show_mouse_in_fullscreen_mode
         self.auto_center_mouse_on_screen = auto_center_mouse_on_screen
-        self.expand_in_fullscreen = expand_in_fullscreen
-        self.maximize_fullscreen = maximize_fullscreen
         self.fullscreen_enabled = False
-        self.fullscreen_pseudo = False
         self.update_list = set()  # TODO replace with Python Queue and remove RLock.
         self.node_update_list = set()  # TODO replace with Python Queue and remove RLock.
         self.display_list = []
@@ -378,8 +392,7 @@ class Display(object):
         self.vsync = vsync
         self.requested_color_depth = color_depth
         self.requested_flags = flags
-        width, height = self.screen_size
-        view_size = int(width * self.scaling), int(height * self.scaling)
+        view_size = tuple(map(lambda x: int(x * self.window_scaling), screen_size))
         self.screen = None
         self.setup_screen(view_size, screen_size, flags, color_depth)
         self.clock = pygame.time.Clock()
@@ -404,7 +417,7 @@ class Display(object):
         glDisable(GL_SCISSOR_TEST)
         self.clipping_enabled = False
 
-    def setup_screen(self, window_size, screen_size, flags, color_depth):
+    def setup_screen(self, view_size, screen_size, flags, color_depth):
         self.ticker.pause()
         event.emit('display.screen.dropped', self)
 
@@ -421,12 +434,12 @@ class Display(object):
             pygame.display.gl_set_attribute(pygame.locals.GL_DOUBLEBUFFER, 1)
             pygame.display.gl_set_attribute(pygame.locals.GL_SWAP_CONTROL, 1)
 
-        mode = (window_size, flags, color_depth)
+        mode = (view_size, flags, color_depth)
         # print mode
         self.screen = pygame.display.set_mode(*mode)
         if self.auto_center_mouse_on_screen:
             # Auto-center mouse pointer on screen.
-            pygame.mouse.set_pos(window_size[0] / 2, window_size[1] / 2)
+            pygame.mouse.set_pos(view_size[0] / 2, view_size[1] / 2)
 
         # Clear the screen.
         glClearColor(*self.gl_clear_color)
@@ -436,25 +449,42 @@ class Display(object):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
 
-        # if self.fullscreen_enabled and self.fullscreen_pseudo:
-        if window_size != screen_size:
-            view_min = min(*window_size)
-            view_max = max(*window_size)
-            screen_min = min(*self.screen_size)
-            screen_max = max(*self.screen_size)
-            # print 'view min =', view_min, '; view_max =', view_max
-            # print 'screen min =', screen_min, '; screen_max =', screen_max
-            view_factor = float(view_min) / float(view_max)
-            screen_factor = float(screen_min) / float(screen_max)
-            # print 'view_factor =', view_factor
-            # print 'screen_factor =', screen_factor
-            # view_width = (view_min / max(view_factor, screen_factor))
-            # print 'view_width =', view_width
-            diff = int(screen_min / min(view_factor, screen_factor)) - screen_max
-            # print 'diff =', diff
-            new_ortho = -diff/2, screen_size[0] + diff/2, screen_size[1], 0
-        else:
+        if view_size != screen_size:
+            # print 'view_size != screen_size:', view_size, screen_size
             new_ortho = 0, screen_size[0], screen_size[1], 0
+
+            # 768 / 480.0 = 1.6
+            # 640 * 1.6 = 1024
+            # 1366 - 1024 = 342
+            # 342 / 2 = 171
+            height_factor = view_size[1] / float(screen_size[1])
+            # print 1, height_factor
+            width = height_factor * screen_size[0]
+            # print 2, width
+            x = int((view_size[0] - width) / 2)
+            # print 3, x
+            if x < 0:
+                width += x * 2
+                x = 0
+            # print 'x =', x
+
+            width_factor = view_size[0] / float(screen_size[0])
+            # print 1, width_factor
+            height = width_factor * screen_size[1]
+            # print 2, height
+            y = int((view_size[1] - height) / 2)
+            # print 3, y
+            if y < 0:
+                height += y * 2
+                y = 0
+            # print 'y =', y
+
+            # print 'viewport =', (x, y, int(width), int(height))
+            glViewport(x, y, int(width), int(height))
+        else:
+            # print 'view_size == screen_size:', view_size, screen_size
+            new_ortho = 0, screen_size[0], screen_size[1], 0
+            glViewport(0, 0, *screen_size)
         # print 'ortho =', new_ortho
         # TODO Can we use our z-buffer for ordering of sprites instead of doing that manually?
         #      http://wiki.delphigl.com/index.php/Tutorial_2D
@@ -502,6 +532,9 @@ class Display(object):
         # ie. GL_FRAMEBUFFER_UNSUPPORTED_EXT
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP)
         glTexImage2D(
             GL_TEXTURE_2D, 0, GL_RGB8,
             screen_size[0], screen_size[1], 0, GL_RGB,
@@ -527,10 +560,14 @@ class Display(object):
         glBindTexture(GL_TEXTURE_2D, fbo_tex)
         x1, y1, x2, y2 = (0.0, 1.0, 1.0, 0.0)  # Render texture flipped.
         glBegin(GL_TRIANGLE_STRIP)
-        glTexCoord2f(x1, y1); glVertex2f(0, 0)
-        glTexCoord2f(x1, y2); glVertex2f(0, screen_size[1])
-        glTexCoord2f(x2, y1); glVertex2f(screen_size[0], 0)
-        glTexCoord2f(x2, y2); glVertex2f(screen_size[0], screen_size[1])
+        glTexCoord2f(x1, y1)
+        glVertex2f(0, 0)
+        glTexCoord2f(x1, y2)
+        glVertex2f(0, screen_size[1])
+        glTexCoord2f(x2, y1)
+        glVertex2f(screen_size[0], 0)
+        glTexCoord2f(x2, y2)
+        glVertex2f(screen_size[0], screen_size[1])
         glEnd()
         # END: draw our buffer to the display list
         glEndList()
@@ -687,7 +724,7 @@ class Display(object):
             # if isinstance(item, Node):
             #     continue
             if not item.is_drawable:
-                print item.parent_node, item
+                print 'rebuild_drawables() got undrawable item:', item.parent_node, item
                 continue
             if item.pos_real is None or item.rgba_inherited[3] == 0.0:
                 # print 'rebuild_drawables', item, item.rgba_inherited
@@ -733,7 +770,7 @@ class Display(object):
                 if current_region != last_region:
                     # print current_region
                     glScissor(
-                        current_region.x, self.screen_size[1] - current_region.y - current_region.h,
+                        current_region.x, height - current_region.y - current_region.h,
                         current_region.w, current_region.h,
                     )
                     last_region = current_region
@@ -807,36 +844,33 @@ class Display(object):
         # surface = pygame.display.get_surface()
         # hwinfo = pygame.display.Info()
         # print hwinfo
+        screen_size = self.screen_size
+        view_size = self.view_size
         flags = self.requested_flags
         color_depth = self.requested_color_depth
-        # print 'view_size =', self.view_size
-        # print 'screen_size =', self.screen_size
+        mouse_visible = True
+        # print 'screen_size =', screen_size
+        # print 'view_size =', view_size
+        # print 'window_scaling =', self.window_scaling
+        changed = False
         if choice is True and not self.is_fullscreen():
-            pygame.mouse.set_visible(self.show_mouse_in_fullscreen_mode)
-            if self.maximize_fullscreen:
-                self.screen_size = self.view_size
-            elif self.expand_in_fullscreen:
-                # 1440/900*600
-                self.screen_size = int(float(self.view_size[0]) / float(self.view_size[1]) * float(self.screen_size[1])), self.screen_size[1]
-            if self.fullscreen_pseudo:
-                # print 'enable pseudo fullscreen'
-                flags |= locals_.NOFRAME
-                self.fullscreen_enabled = True
-                self.setup_screen(self.view_size, self.screen_size, flags, color_depth)
-            else:
-                # print 'enable fullscreen'
-                flags |= locals_.FULLSCREEN
-                self.fullscreen_enabled = True
-                self.setup_screen(self.screen_size, self.screen_size, flags, color_depth)
+            # print 'enable fullscreen'
+            flags |= locals_.FULLSCREEN
+            self.fullscreen_enabled = True
+            # screen_size = view_size
+            mouse_visible = self.show_mouse_in_fullscreen_mode
+            changed = True
         elif choice is False and self.is_fullscreen():
             # print 'disable fullscreen'
-            if self.expand_in_fullscreen:
-                self.screen_size = self.screen_size_org
             self.fullscreen_enabled = False
-            width, height = self.screen_size
-            view_size = int(width * self.scaling), int(height * self.scaling)
-            self.setup_screen(view_size, self.screen_size, flags, color_depth)
-            pygame.mouse.set_visible(self.show_mouse_in_windowed_mode)
+            width, height = view_size
+            view_size = tuple(map(lambda x: int(x * self.window_scaling), screen_size))
+            mouse_visible = self.show_mouse_in_windowed_mode
+            changed = True
+        if changed:
+            # print 'changed!'
+            self.setup_screen(view_size, screen_size, flags, color_depth)
+            pygame.mouse.set_visible(mouse_visible)
 
     def toggle_fullscreen(self, context=None):
         if self.is_fullscreen():
