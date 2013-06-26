@@ -174,8 +174,11 @@ def emit(event_name, context=None):
             func = func.resolve()
         except ReferenceError:
             # It might happen that a race conditions brings us here.
-            listeners[event_name].remove(listener)
-            # print 'removed stale listener: %s' % listener
+            try:
+                listeners[event_name].remove(listener)
+                # print 'removed stale listener: %s' % listener
+            except KeyError:
+                pass
             continue
 
         matching_failed = False
