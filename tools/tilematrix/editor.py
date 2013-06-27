@@ -59,7 +59,7 @@ def main():
                         help='Provide filepath to the matrix spec (ini-file) to work with.',
     )
     parser.add_argument('--screen-size', dest='screen_size', action='store',
-                        default='800x600', metavar='WIDTHxHEIGHT',
+                        default='1024x-768', metavar='WIDTHxHEIGHT',
                         help='Provide screen size (width and height) for the display.',
     )
     parser.add_argument('--fullscreen', dest='fullscreen', action='store_true',
