@@ -10,7 +10,7 @@ import collections
 from threading import Thread
 
 import pygame
-from pygame.time import get_ticks
+from pygame.time import get_ticks, wait
 
 from diamond.array import Array
 from diamond.display import Display
@@ -374,6 +374,12 @@ class SceneManager(object):
         display_list = self.display.display_list
         drawables = self.display._drawables
         drawables_dl = self.display._drawables_dl
+        for round in range(0, 5):
+            if listeners or tickers or textures or texture_dls or display_list or drawables:
+                log_info('Waiting a moment for background stuff to shutdown.')
+                wait(1000)
+            else:
+                break
         if listeners or tickers or textures or texture_dls or display_list or drawables:
             log_warning('Found stuff to be collected as garbage!')
             if listeners:
