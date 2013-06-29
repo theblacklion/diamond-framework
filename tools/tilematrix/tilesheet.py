@@ -104,10 +104,11 @@ class TilesheetScene(Scene):
             # print points
             tilematrix.load_points(points)
 
+            # UPDATE: We probably don't need it anymore.
             # Align sector to sheet size for faster movement. This also rebuilds
             # the matrix with the data loaded above.
             # print 'size_in_tiles =', size_in_tiles
-            tilematrix.set_sector_size(*size_in_tiles)
+            # tilematrix.set_sector_size(*size_in_tiles)
 
         iterator = iter(self.tilemaps)
         # iterator.next()
