@@ -84,8 +84,6 @@ def main():
         'show_mouse_in_windowed_mode': True,
         'show_mouse_in_fullscreen_mode': True,
         'auto_center_mouse_on_screen': True,
-        # 'expand_in_fullscreen': True,
-        # 'maximize_fullscreen': True,
     }
 
     # Setup data to work with.
