@@ -152,7 +152,7 @@ class TilemapScene(Scene):
 
     def show(self):
         super(TilemapScene, self).show()
-        self._cursor_pos = pygame.mouse.get_pos()
+        self._cursor_pos = self.root_node.display.translate_view_to_screen_coord(*pygame.mouse.get_pos())
         self.unpause()
 
     def __on_debug_event(self, context):

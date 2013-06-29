@@ -394,6 +394,7 @@ class Display(object):
         self.requested_flags = flags
         view_size = tuple(map(lambda x: int(x * self.window_scaling), screen_size))
         self.screen = None
+        self.viewport = None  # Used in scene for translating mouse positions.
         self.setup_screen(view_size, screen_size, flags, color_depth)
         self.clock = pygame.time.Clock()
         self.frame_length_clock = pygame.time.Clock()
@@ -481,10 +482,12 @@ class Display(object):
 
             # print 'viewport =', (x, y, int(width), int(height))
             glViewport(x, y, int(width), int(height))
+            self.viewport = (x, y, int(width), int(height))
         else:
             # print 'view_size == screen_size:', view_size, screen_size
             new_ortho = 0, screen_size[0], screen_size[1], 0
             glViewport(0, 0, *screen_size)
+            self.viewport = (0, 0, screen_size[0], screen_size[1])
         # print 'ortho =', new_ortho
         # TODO Can we use our z-buffer for ordering of sprites instead of doing that manually?
         #      http://wiki.delphigl.com/index.php/Tutorial_2D
@@ -895,3 +898,10 @@ class Display(object):
 
     def get_rect(self):
         return pygame.Rect(0, 0, self.screen_size[0], self.screen_size[1])
+
+    def translate_view_to_screen_coord(self, x, y):
+        v_w, v_h = self.viewport[2:]
+        s_w, s_h = self.screen_size
+        pos = (x * (s_w / float(v_w)), y * (s_h / float(v_h)))
+        pos = tuple(map(int, pos))
+        return pos

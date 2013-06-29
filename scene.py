@@ -315,6 +315,8 @@ class SceneManager(object):
 
         display_update = self.display.update
         event_get = pygame.event.get
+        translate_view_to_screen_coord = self.display.translate_view_to_screen_coord
+        old_pos = translate_view_to_screen_coord(*pygame.mouse.get_pos())
         while self.active_scene_id is not None:
             # TODO generate list of instances somewhere for faster looping.
             for scene in scenes:
@@ -327,6 +329,22 @@ class SceneManager(object):
                     try:
                         if scene['scene_id'] == self.active_scene_id:
                             for pg_event in event_get():
+                                if pg_event.type == pygame.locals.MOUSEMOTION:
+                                    pos = translate_view_to_screen_coord(*pg_event.pos)
+                                    rel = pos[0] - old_pos[0], pos[1] - old_pos[1]
+                                    old_pos = pos
+                                    pg_event = pygame.event.Event(pg_event.type, dict(
+                                        buttons=pg_event.buttons,
+                                        pos=pos,
+                                        rel=rel,
+                                    ))
+                                elif pg_event.type in (pygame.locals.MOUSEBUTTONDOWN, pygame.locals.MOUSEBUTTONUP):
+                                    pos = translate_view_to_screen_coord(*pg_event.pos)
+                                    old_pos = pos
+                                    pg_event = pygame.event.Event(pg_event.type, dict(
+                                        button=pg_event.button,
+                                        pos=pos,
+                                    ))
                                 event.emit('scene.event.system', Array(
                                     scene=scene_instance, event=pg_event))
                         loop_iteration()
