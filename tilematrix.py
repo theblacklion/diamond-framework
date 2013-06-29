@@ -1014,6 +1014,8 @@ class TileMatrix(Node):
         self.__last_visibility_map_pos = (None, None), (None, None)
         self.update_sectors()
 
+    # FIXME When extending a matrix something goes wrong and e.g. selections
+    # don't show up in the extended area. Someone is still using the old size.
     def set_sector_size(self, width, height):
         self.__sector_size = width, height
         self.rebuild()
