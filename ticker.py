@@ -59,8 +59,10 @@ class Ticker(AbstractThread):
         self.drop_outdated_msecs = timeout
         self.__is_paused = False
         self.listeners = [
-            event.add_listener(self.on_force_ticks_event, 'ticker.force_ticks'),
-            event.add_listener(self.on_dump_event, 'ticker.dump'),
+            event.add_listener(self._on_force_ticks_event, 'ticker.force_ticks'),
+            event.add_listener(self._on_dump_event, 'ticker.dump'),
+            event.add_listener(self.pause, 'ticker.pause'),
+            event.add_listener(self.unpause, 'ticker.unpause'),
         ]
         self.is_threaded = True
         # print 'Init ticker:', self
@@ -79,11 +81,11 @@ class Ticker(AbstractThread):
         # print get_ticks() - self.offset
         return get_ticks() - self.offset
 
-    def on_force_ticks_event(self, context):
+    def _on_force_ticks_event(self, context):
         self.offset = get_ticks() - context['ticks']
         # print self, 'offset =', self.offset
 
-    def on_dump_event(self, context):
+    def _on_dump_event(self, context):
         return self.tickers
 
     def pause(self):
@@ -179,10 +181,16 @@ class Ticker(AbstractThread):
 
     # @dump_args
     def clear(self):
+        is_paused = self.__is_paused
+        self.__is_paused = True
         self.tickers.clear()
         # Wait until our tick() is done. Usefull if tick is being called in a thread or via versa.
-        while not self.is_idle:
+        # We use a limit here to avoid dead-locks.
+        cur_round, max_rounds = 0, 12
+        while not self.is_idle and cur_round < max_rounds:
             wait(5)
+            cur_round += 1
+        self.__is_paused = is_paused
 
     def tick(self):
         # print 'Ticker.tick(%s) got %d tickers' % (self, len(self.tickers))
