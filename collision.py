@@ -46,6 +46,8 @@ class Collision(object):
             results = set()
             for idx in collisions:
                 target = targets[idx]
+                if not target or target.pos_real_in_tree is None:
+                    continue
                 try:
                     target_mask = target.frame['masks'][str(target.frame['current_gamma'])]
                 except TypeError:  # Race condition.
