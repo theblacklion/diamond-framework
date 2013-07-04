@@ -383,7 +383,7 @@ class SceneManager(object):
         self.display.__del__()  # Tell display to clean it up.
 
         # Catch statistics and if some found output things.
-        log_info('Checking for staff to be collected as garbage.')
+        log_info('Checking for stuff that should be cleaned up already.')
         from diamond.display import Texture, TextureDl
         listeners = event.get_listeners()
         tickers = event.emit('ticker.dump')
@@ -392,14 +392,8 @@ class SceneManager(object):
         display_list = self.display.display_list
         drawables = self.display._drawables
         drawables_dl = self.display._drawables_dl
-        for round in range(0, 5):
-            if listeners or tickers or textures or texture_dls or display_list or drawables:
-                log_info('Waiting a moment for background stuff to shutdown.')
-                wait(1000)
-            else:
-                break
         if listeners or tickers or textures or texture_dls or display_list or drawables:
-            log_warning('Found stuff to be collected as garbage!')
+            log_warning('Found stuff that should be cleaned up earlier!')
             if listeners:
                 log_warning('Events:')
                 for key, val in listeners.iteritems():
