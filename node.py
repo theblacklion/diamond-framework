@@ -682,13 +682,35 @@ class Node(object):
         if exclude_hidden:
             children = chain(self.child_nodes, self.child_sprites)
         else:
-            children = chain(self.child_nodes, self.child_nodes_hidden, self.child_sprites, self.child_sprites_hidden)
+            children = chain(self.child_nodes, self.child_nodes_hidden,
+                             self.child_sprites, self.child_sprites_hidden)
         if self.pos_real_in_tree is None:
             self._recalc_real_pos()
         rect = pygame.Rect(self.pos_real_in_tree[0], self.pos_real_in_tree[1], 0, 0)
         rects = [child.get_rect(exclude_hidden=exclude_hidden) for child in children]
         # print len(rects)
         rect.unionall_ip(rects)
+        return rect
+
+    def get_bounding_rect(self, exclude_hidden=True):
+        '''
+        Returns a combined pygame.Rect with the real pos and size of all its
+        child contents.
+        '''
+        if exclude_hidden:
+            children = list(chain(self.child_nodes, self.child_sprites))
+        else:
+            children = list(chain(self.child_nodes, self.child_nodes_hidden,
+                                  self.child_sprites, self.child_sprites_hidden))
+        if self.pos_real_in_tree is None:
+            self._recalc_real_pos()
+        if children:
+            rect = children[0].get_bounding_rect(exclude_hidden=exclude_hidden)
+            rects = [child.get_bounding_rect(exclude_hidden=exclude_hidden) for child in children[1:]]
+            # print len(rects)
+            rect.unionall_ip(rects)
+        else:
+            rect = pygame.Rect(self.pos_real_in_tree[0], self.pos_real_in_tree[1], 0, 0)
         return rect
 
     def __del__(self):
