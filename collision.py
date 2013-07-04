@@ -4,6 +4,8 @@
 # @copyright Oktay Acikalin
 # @license   MIT (LICENSE.txt)
 
+from threading import RLock
+
 from diamond import event
 # from diamond.decorators import time
 
@@ -17,19 +19,22 @@ class Collision(object):
         self.__targets = set()
         self.__source = None
         self.__active_collisions = set()
+        self.lock = RLock()
 
     def add_targets(self, targets):
-        self.__targets |= set(targets)
+        with self.lock:
+            self.__targets |= set(targets)
 
     def remove_targets(self, targets):
-        self.__targets -= set(targets)
+        with self.lock:
+            self.__targets -= set(targets)
 
     def set_source(self, source):
         self.__source = source
 
     # @time
     def tick(self):
-        if self.__source is None:
+        if self.__source is None or not self.lock.acquire(False):
             return
         source = self.__source
         targets = list(self.__targets)
@@ -76,3 +81,4 @@ class Collision(object):
             event.emit('%s.state' % self.__name, dict(
                 source=source, targets=self.__active_collisions,
             ))
+        self.lock.release()
