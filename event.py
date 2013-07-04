@@ -30,6 +30,7 @@ context_rules = {
     'is': lambda context_value, value: context_value is not value,
     'is_not': lambda context_value, value: context_value is value,
     'in': lambda context_value, value: context_value not in value,
+    'returns': lambda context_value, value: context_value() != value,
 }
 
 proxy_rules = set([
