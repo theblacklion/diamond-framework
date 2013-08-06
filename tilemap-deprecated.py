@@ -14,7 +14,7 @@ import csv
 from collections import deque
 from math import ceil  #, floor
 
-import pygame
+# import pygame
 
 from diamond.node import Node
 from diamond.sprite import Sprite

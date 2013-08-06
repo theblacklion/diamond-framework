@@ -6,7 +6,7 @@
 
 # TODO music.load can also load file-like-objects. we should 
 
-import pygame.mixer
+# import pygame.mixer
 
 from diamond import event
 from diamond.transition import TransitionManager

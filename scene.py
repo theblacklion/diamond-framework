@@ -9,20 +9,14 @@ import random
 import collections
 from threading import Thread
 
-import pygame
-from pygame.time import get_ticks, wait
-
 from diamond.array import Array
-from diamond.display import Display
+from diamond.window import Window
 from diamond import event
 from diamond.node import Node
 from diamond.helper.logging import log_debug, log_info, log_warning
 from diamond.helper.weak_ref import Wrapper
-# from diamond.ticker import Ticker
-
-
-class QuitSceneEvent(Exception):
-    pass
+from diamond import clock
+from diamond import pyglet
 
 
 class Scene(object):
@@ -36,6 +30,7 @@ class Scene(object):
         self.__bound_tickers = set()
         self.__bound_threads = set()
         self.__managed_objects = set()
+        self.keys_pressed = set()
         self.is_paused = False
 
     def setup(self):
@@ -44,7 +39,7 @@ class Scene(object):
         Add your own setup code at the end of this method.
         '''
         root_node = Node('Scene %s' % self.scene_id)
-        root_node.add_to(self.scene_manager.display.get_root_node())
+        root_node.add_to(self.scene_manager.window.root_node)
         self.root_node = root_node
 
     def bind(self, *candidates):
@@ -108,19 +103,21 @@ class Scene(object):
         self.__bound_threads.clear()
 
     def add_default_listeners(self):
-        display = self.scene_manager.display
+        window = self.scene_manager.window
         self.bind(
-            event.add_listener(self.on_quit_event, 'scene.event.system',
+            event.add_listener(self.on_quit_event, 'scene.key.down',
                                context__scene__is=self,
-                               context__event__type__eq=pygame.locals.QUIT),
-            event.add_listener(self.on_quit_event, 'scene.event.system',
+                               context__event__key__eq='ESCAPE'),
+            event.add_listener(window.toggle_fullscreen, 'scene.key.down',
                                context__scene__is=self,
-                               context__event__type__eq=pygame.locals.KEYDOWN,
-                               context__event__key__eq=pygame.locals.K_ESCAPE),
-            event.add_listener(display.toggle_fullscreen, 'scene.event.system',
+                               context__event__key__eq='F11'),
+        )
+        # TODO only add this if platform is windows.
+        self.bind(
+            event.add_listener(window.toggle_fullscreen, 'scene.key.down',
                                context__scene__is=self,
-                               context__event__type__eq=pygame.locals.KEYDOWN,
-                               context__event__key__eq=pygame.locals.K_F1),
+                               context__event__key__eq='RETURN',
+                               context__event__modifiers__contains='MOD_ALT'),
         )
 
     def manage(self, *candidates):
@@ -153,22 +150,20 @@ class Scene(object):
         Add your own teardown code before this method.
         '''
         # print('Scene.teardown')
-        log_debug('\n0. unmanage all objects')
+        log_debug('\n1. unmanage all objects')
         self.teardown_managed_objects()
         self.unmanage(*self.__managed_objects)
-        log_debug('\n5. remove_all_bonds')
+        log_debug('\n2. remove_all_bonds')
         self.remove_all_bonds()
-        log_debug('1. detach_from_display')
-        self.root_node.detach_from_display()
-        log_debug('\n2. remove_all')
+        log_debug('\n3. remove_all')
         self.root_node.remove_all()
-        log_debug('\n3. remove_from_parent')
-        self.root_node.remove_from_parent(cascade=True)
-        log_debug('\n4. del self.root_node')
+        log_debug('\n4. remove_from_parent')
+        self.root_node.remove_from_parent()
+        log_debug('\n5. del self.root_node')
         del self.root_node
         log_debug('\n6. done')
 
-    def loop_iteration(self):
+    def tick(self, dt):
         # TODO also support Wrapper?
         [ticker.tick() for ticker in self.__bound_tickers]
 
@@ -186,16 +181,18 @@ class Scene(object):
 
     def show(self):
         '''Transition for showing a scene.'''
-        if self.root_node.is_hidden:
-            self.root_node.show()
+        # if self.root_node.is_hidden:
+        #     self.root_node.show()
+        pass
 
     def hide(self):
         '''Transition for hiding a scene.'''
-        if not self.root_node.is_hidden:
-            self.root_node.hide()
+        # if not self.root_node.is_hidden:
+        #     self.root_node.hide()
+        pass
 
     def on_quit_event(self, context):
-        raise QuitSceneEvent()
+        event.emit('scene.quit', self)
 
     def __del__(self):
         log_debug('Scene.__del__(%s)' % self)
@@ -205,63 +202,60 @@ class SceneManager(object):
 
     def __init__(self):
         super(SceneManager, self).__init__()
-        self.display = None
-        # os.environ['SDL_VIDEO_CENTERED'] = '1'
-        pygame.mixer.pre_init(44100, -16, 2, 1024)
-        pygame.init()
+        self.window = None
         self.scenes = {}
+        self.scene_tickers = []
         self.active_scene_id = None
+        self._listeners = [
+            event.add_listener(self._on_window_key_down_event, 'window.key.down'),
+            event.add_listener(self._on_window_key_up_event, 'window.key.up'),
+            event.add_listener(self._on_scene_quit_event, 'scene.quit'),
+        ]
         log_info('Initialized.')
 
-    def __del__(self):
-        log_info(self)
+    def setup_window(self, **kwargs):
+        self.window = Window(**kwargs)
+        return self.window
 
-    def setup_display(self, *args, **kwargs):
-        self.display = Display(*args, **kwargs)
-        return self.display
-
-    def add_scene(self, Scene, *args, **kwargs):
-        try:
-            scene_id = kwargs.pop('scene_id')
-        except KeyError:
-            scene_id = None
+    def add_scene(self, Scene, scene_id=None, **setup_kwargs):
         if scene_id is None:
             scene_id = ('<%s>' % random.random()).replace('.', '')
         log_info('Adding scene %s with ID "%s".' % (Scene, scene_id))
         self.scenes[scene_id] = dict(
-            prototype=(Scene, args, kwargs),
+            cls=Scene,
+            setup_kwargs=setup_kwargs,
             instance=None,
             scene_id=scene_id,  # Backref for faster looping.
         )
 
     def create_scene(self, scene_id):
+        time = clock.get_ticks()
         try:
             scene_frame = self.scenes[scene_id]
         except KeyError:
             raise Exception('Unknown scene ID: %s' % scene_id)
         if scene_frame['instance'] is not None:
             return scene_frame['instance']
-        Scene, args, kwargs = scene_frame['prototype']
         log_info('Creating scene with ID "%s".' % scene_id)
-        scene = Scene(scene_id, self)
+        scene = scene_frame['cls'](scene_id, self)
         scene_frame['instance'] = scene
+        self.scene_tickers.append(scene.tick)
+        clock.shift(clock.get_ticks() - time)
         return scene_frame['instance']
 
     def setup_scene(self, scene_id):
+        time = clock.get_ticks()
         try:
             scene_frame = self.scenes[scene_id]
         except KeyError:
             raise Exception('Unknown scene ID: %s' % scene_id)
-        Scene, args, kwargs = scene_frame['prototype']
         scene = scene_frame['instance']
-        cur_ticks = get_ticks()
         log_info('Setting up scene %s with ID: %s' % (scene, scene_id))
-        scene.setup(*args, **kwargs)
-        # Changing the ticker offset is necessary to compensate the startup time.
-        # TODO test this!
-        event.emit('ticker.force_ticks', dict(ticks=cur_ticks))
+        scene.setup(**scene_frame['setup_kwargs'])
+        clock.shift(clock.get_ticks() - time)
 
     def teardown_scene(self, scene_id):
+        time = clock.get_ticks()
         try:
             scene_frame = self.scenes[scene_id]
         except KeyError:
@@ -269,8 +263,10 @@ class SceneManager(object):
         scene = scene_frame['instance']
         log_info('Tearing down scene %s with ID "%s".' % (scene, scene_id))
         scene.teardown()
+        self.scene_tickers.remove(scene.tick)
         scene_frame['instance'] = None
         log_info('Deleted scene instance with ID: %s' % scene_id)
+        clock.shift(clock.get_ticks() - time)
 
     def show_scene(self, scene_id):
         try:
@@ -281,6 +277,7 @@ class SceneManager(object):
             self.create_scene(scene_id)
             self.setup_scene(scene_id)
         self.active_scene_id = scene_id
+        scene_frame['instance'].keys_pressed.clear()
         scene_frame['instance'].show()
 
     def hide_scene(self, scene_id):
@@ -290,6 +287,7 @@ class SceneManager(object):
             raise Exception('Unknown scene ID: %s' % scene_id)
         if scene_frame['instance'] is None:
             raise Exception('Error hiding scene. Scene not instanciated: %s' % scene_id)
+        scene_frame['instance'].keys_pressed.clear()
         scene_frame['instance'].hide()
         self.active_scene_id = None
 
@@ -306,62 +304,106 @@ class SceneManager(object):
                 self.setup_scene(scene_id)
         return scene_frame['instance']
 
-    def _loop_scene(self):
+    # TODO
+    def _on_window_mouse_motion_event(self, context):
+        # translate_view_to_screen_coord = self.window.translate_view_to_screen_coord
+        # old_pos = translate_view_to_screen_coord(*pygame.mouse.get_pos())
+        scene_id = self.active_scene_id
+        if scene_id is not None:
+            #     if pg_event.type == pygame.locals.MOUSEMOTION:
+            #         pos = translate_view_to_screen_coord(*pg_event.pos)
+            #         rel = pos[0] - old_pos[0], pos[1] - old_pos[1]
+            #         old_pos = pos
+            #         pg_event = pygame.event.Event(pg_event.type, dict(
+            #             buttons=pg_event.buttons,
+            #             pos=pos,
+            #             rel=rel,
+            #         ))
+            event.emit('scene.mouse.motion', Array(
+                scene=self.scenes[scene_id]['instance'],
+                event=context,
+            ))
+
+    # TODO
+    def _on_window_mouse_button_down_event(self, context):
+        scene_id = self.active_scene_id
+        if scene_id is not None:
+            #     elif pg_event.type in (pygame.locals.MOUSEBUTTONDOWN, pygame.locals.MOUSEBUTTONUP):
+            #         pos = translate_view_to_screen_coord(*pg_event.pos)
+            #         old_pos = pos
+            #         pg_event = pygame.event.Event(pg_event.type, dict(
+            #             button=pg_event.button,
+            #             pos=pos,
+            #         ))
+            #     event.emit('scene', Array(
+            #         scene=scene_instance, event=pg_event))
+            event.emit('scene.mouse.button.down', Array(
+                scene=self.scenes[scene_id]['instance'],
+                event=context,
+            ))
+
+    # TODO
+    def _on_window_mouse_button_up_event(self, context):
+        scene_id = self.active_scene_id
+        if scene_id is not None:
+            #     elif pg_event.type in (pygame.locals.MOUSEBUTTONUP, pygame.locals.MOUSEBUTTONUP):
+            #         pos = translate_view_to_screen_coord(*pg_event.pos)
+            #         old_pos = pos
+            #         pg_event = pygame.event.Event(pg_event.type, dict(
+            #             button=pg_event.button,
+            #             pos=pos,
+            #         ))
+            #     event.emit('scene', Array(
+            #         scene=scene_instance, event=pg_event))
+            event.emit('scene.mouse.button.up', Array(
+                scene=self.scenes[scene_id]['instance'],
+                event=context,
+            ))
+
+    def _on_window_key_down_event(self, context):
+        scene_id = self.active_scene_id
+        if scene_id is not None:
+            self.scenes[scene_id]['instance'].keys_pressed.add(context.key)
+            event.emit('scene.key.down', Array(
+                scene=self.scenes[scene_id]['instance'],
+                event=context,
+            ))
+
+    def _on_window_key_up_event(self, context):
+        scene_id = self.active_scene_id
+        if scene_id is not None:
+            self.scenes[scene_id]['instance'].keys_pressed.discard(context.key)
+            event.emit('scene.key.up', Array(
+                scene=self.scenes[scene_id]['instance'],
+                event=context,
+            ))
+
+    def _on_scene_quit_event(self, context):
+        scene = context
+        scene_id = scene.scene_id
+        self.teardown_scene(scene_id)
+        if self.active_scene_id == scene_id:
+            self.active_scene_id = None
+            self.window.dispatch_event('on_close')
+
+    def _loop_scenes(self):
         scenes = self.scenes.values()
         for scene in scenes:
             if scene['instance'] is not None:
                 event.emit('scene.ready', scene['instance'])
                 scene['instance'].show()
 
-        display_update = self.display.update
-        event_get = pygame.event.get
-        translate_view_to_screen_coord = self.display.translate_view_to_screen_coord
-        old_pos = translate_view_to_screen_coord(*pygame.mouse.get_pos())
-        while self.active_scene_id is not None:
-            # TODO generate list of instances somewhere for faster looping.
-            for scene in scenes:
-                scene_instance = scene['instance']
-                try:
-                    loop_iteration = scene_instance.loop_iteration
-                except AttributeError:
-                    pass
-                else:
-                    try:
-                        if scene['scene_id'] == self.active_scene_id:
-                            for pg_event in event_get():
-                                if pg_event.type == pygame.locals.MOUSEMOTION:
-                                    pos = translate_view_to_screen_coord(*pg_event.pos)
-                                    rel = pos[0] - old_pos[0], pos[1] - old_pos[1]
-                                    old_pos = pos
-                                    pg_event = pygame.event.Event(pg_event.type, dict(
-                                        buttons=pg_event.buttons,
-                                        pos=pos,
-                                        rel=rel,
-                                    ))
-                                elif pg_event.type in (pygame.locals.MOUSEBUTTONDOWN, pygame.locals.MOUSEBUTTONUP):
-                                    pos = translate_view_to_screen_coord(*pg_event.pos)
-                                    old_pos = pos
-                                    pg_event = pygame.event.Event(pg_event.type, dict(
-                                        button=pg_event.button,
-                                        pos=pos,
-                                    ))
-                                event.emit('scene.event.system', Array(
-                                    scene=scene_instance, event=pg_event))
-                        loop_iteration()
-                    except QuitSceneEvent:
-                        scene_id = scene['scene_id']
-                        self.teardown_scene(scene_id)
-                        if self.active_scene_id == scene_id:
-                            self.active_scene_id = None
-            display_update()
+        # Changing the time offset is necessary to compensate the startup time.
+        # This also ensures that tickers won't skip ahead on startup.
+        clock.reset()
+
+        tickers = self.scene_tickers
+        pyglet.clock.schedule(lambda dt: [ticker(dt) for ticker in tickers])
+        pyglet.app.run()
 
         for scene in scenes:
             if scene['instance'] is not None:
                 self.teardown_scene(scene['scene_id'])
-
-        display_update()
-
-        # print locals().keys()
 
     def run(self, scene_id=None):
         event.emit('scenemanager.ready', self)
@@ -373,26 +415,27 @@ class SceneManager(object):
 
         # Instanciate active scene if not already done.
         if scene_id is None:
-            raise Exception('SceneManager has no active scene to work with!')
+            # If we have only one scene, try to use it anyway.
+            if len(self.scenes) == 1:
+                scene_id = self.scenes.keys()[0]
+                self.active_scene_id = scene_id
+            else:
+                raise Exception('SceneManager has no active scene to work with!')
         self.create_scene(scene_id)
         self.setup_scene(scene_id)
 
         # We enclose our loop in order to have it easier with our GC.
-        self._loop_scene()
+        self._loop_scenes()
 
-        self.display.__del__()  # Tell display to clean it up.
+        event.remove_listeners(self._listeners)
+
+        del self.window  # Tell window to clean it up.
 
         # Catch statistics and if some found output things.
         log_info('Checking for stuff that should be cleaned up already.')
-        from diamond.display import Texture, TextureDl
         listeners = event.get_listeners()
         tickers = event.emit('ticker.dump')
-        textures = Texture.get_instance_cache()
-        texture_dls = TextureDl.get_instance_cache()
-        display_list = self.display.display_list
-        drawables = self.display._drawables
-        drawables_dl = self.display._drawables_dl
-        if listeners or tickers or textures or texture_dls or display_list or drawables:
+        if listeners or tickers:
             log_warning('Found stuff that should be cleaned up earlier!')
             if listeners:
                 log_warning('Events:')
@@ -402,24 +445,5 @@ class SceneManager(object):
                 log_warning('Tickers:')
                 for func, items in tickers:
                     log_warning((func, items))
-            if textures:
-                log_warning('Textures:')
-                for key, val in textures.iteritems():
-                    log_warning((key, val))
-            if texture_dls:
-                log_warning('TexturesDLs:')
-                for key, val in texture_dls.iteritems():
-                    log_warning((key, val))
-            if display_list:
-                log_warning('Display list:')
-                for val in display_list:
-                    log_warning(val)
-            if drawables:
-                log_warning('Drawable list:')
-                for val in drawables:
-                    log_warning(val)
-            if drawables_dl:
-                log_warning('Drawable display list:')
-                log_warning(drawables_dl)
 
         log_info('Done.')
