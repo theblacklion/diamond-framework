@@ -4,7 +4,7 @@
 # @copyright Oktay Acikalin
 # @license   MIT (LICENSE.txt)
 
-import pygame.mixer as mixer
+# import pygame.mixer as mixer
 
 from diamond import event
 from diamond.helper.weak_ref import Wrapper

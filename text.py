@@ -1,0 +1,3 @@
+class Label(object):
+
+    pass

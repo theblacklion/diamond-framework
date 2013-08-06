@@ -4,8 +4,8 @@
 # @copyright Oktay Acikalin
 # @license   MIT (LICENSE.txt)
 
-import pygame
-from pygame.locals import SRCALPHA, RLEACCEL
+# import pygame
+# from pygame.locals import SRCALPHA, RLEACCEL
 
 from diamond.fonts import internal as DEFAULT_FONT
 from diamond.sprite import Sprite

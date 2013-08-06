@@ -1,4 +1,4 @@
-# pygame's internal default font
+# default font
 type = 'ttf'
 name = None
 size = 14

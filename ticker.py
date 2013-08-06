@@ -8,12 +8,11 @@ from inspect import getargspec
 from itertools import takewhile
 from types import FunctionType
 
-from pygame.time import get_ticks, wait
-
 from diamond import event
 from diamond.helper.weak_ref import Wrapper
 from diamond.helper.ordered_set import OrderedSet
 from diamond.thread import AbstractThread
+from diamond.clock import get_ticks, wait
 # from diamond.decorators import dump_args
 
 
@@ -50,16 +49,14 @@ class BreakTickerLoop(Exception):
 class Ticker(AbstractThread):
     # TODO try make use of http://docs.python.org/tutorial/datastructures.html#using-lists-as-queues
 
-    def __init__(self, offset=0, limit=25, timeout=20):
+    def __init__(self, limit=25, timeout=20):
         super(Ticker, self).__init__()
         self.tickers = OrderedSet()  # Use OrderedSet. Removing is much faster here.
         self.is_dirty = False
-        self.offset = offset
         self.handle_limit_per_iteration = limit
         self.drop_outdated_msecs = timeout
         self.__is_paused = False
         self.listeners = [
-            event.add_listener(self._on_force_ticks_event, 'ticker.force_ticks'),
             event.add_listener(self._on_dump_event, 'ticker.dump'),
             event.add_listener(self.pause, 'ticker.pause'),
             event.add_listener(self.unpause, 'ticker.unpause'),
@@ -78,12 +75,8 @@ class Ticker(AbstractThread):
         event.remove_listeners(self.listeners)
 
     def get_ticks(self):
-        # print get_ticks() - self.offset
-        return get_ticks() - self.offset
-
-    def _on_force_ticks_event(self, context):
-        self.offset = get_ticks() - context['ticks']
-        # print self, 'offset =', self.offset
+        # print get_ticks()
+        return get_ticks()
 
     def _on_dump_event(self, context):
         return self.tickers
@@ -276,7 +269,7 @@ class Ticker(AbstractThread):
         #     print 'executed %d tickers ; removed %d tickers' % (count, len(to_be_removed))
 
         self.is_idle = True
-        # return self.tickers[0][2] if self.tickers else None
+        return self.tickers[0][2] if self.tickers else None
 
     def join(self):
         event.remove_listeners(self.listeners)

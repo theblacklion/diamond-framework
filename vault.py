@@ -9,40 +9,43 @@ from collections import OrderedDict
 from weakref import WeakValueDictionary, proxy, ProxyTypes
 import json
 
-import pygame.image
-import pygame.surface
+# import pygame.image
+# import pygame.surface
 
-from diamond.helper.image import change_gamma
+# from diamond.helper.image import change_gamma
 
 # TODO rework with WeakValueDictionary as already done in display. And test if we
 #      don't get too much rebuilds and loads.
 # TODO Should be somewhere else..
-image_cache = {}
+# image_cache = {}
+
+from diamond import pyglet
+from diamond.rect import Rect
 
 
-def load_image(filename, gamma=1.0):
-    # print 'load_image(%s, %s)' % (filename, gamma)
-    cache_id = '%s::%s' % (filename, gamma)
-    if cache_id not in image_cache:
-        base_cache_id = '%s::%s' % (filename, 1.0)
-        if base_cache_id not in image_cache:
-            image_cache[base_cache_id] = pygame.image.load(filename)
-            # print 'loaded base image'
-        if cache_id != base_cache_id:
-            image_cache[cache_id] = change_gamma(image_cache[base_cache_id], gamma)
-            # print 'generated specific image'
-    return image_cache[cache_id]
+# def load_image(filename, gamma=1.0):
+#     # print 'load_image(%s, %s)' % (filename, gamma)
+#     cache_id = '%s::%s' % (filename, gamma)
+#     if cache_id not in image_cache:
+#         base_cache_id = '%s::%s' % (filename, 1.0)
+#         if base_cache_id not in image_cache:
+#             image_cache[base_cache_id] = pygame.image.load(filename)
+#             # print 'loaded base image'
+#         if cache_id != base_cache_id:
+#             image_cache[cache_id] = change_gamma(image_cache[base_cache_id], gamma)
+#             # print 'generated specific image'
+#     return image_cache[cache_id]
 
 
-def get_subsurface(filename, rect, gamma):
-    # print 'get_subsurface(%s, %s, %s)' % (filename, rect, gamma)
-    cache_id = '%s::%s::%s' % (filename, rect, gamma)
-    if cache_id not in image_cache:
-        surface = load_image(filename, gamma)
-        subsurface = surface.subsurface(rect)
-        image_cache[cache_id] = subsurface
-        # print 'generated subsurface'
-    return image_cache[cache_id]
+# def get_subsurface(filename, rect, gamma):
+#     # print 'get_subsurface(%s, %s, %s)' % (filename, rect, gamma)
+#     cache_id = '%s::%s::%s' % (filename, rect, gamma)
+#     if cache_id not in image_cache:
+#         surface = load_image(filename, gamma)
+#         subsurface = surface.subsurface(rect)
+#         image_cache[cache_id] = subsurface
+#         # print 'generated subsurface'
+#     return image_cache[cache_id]
 
 
 class VaultSpriteActionFrame(object):
@@ -63,7 +66,7 @@ class VaultSpriteActionFrame(object):
                 delta_ = delta[pos]
                 x = hotspot_[0] - rect_[0] + delta_[0]
                 y = hotspot_[1] - rect_[1] + delta_[1]
-                rects.append(pygame.Rect(x, y, rect_[2], rect_[3]))
+                rects.append(Rect(x, y, rect_[2], rect_[3]))
             rects = rects[0].unionall(rects)
             rect = (rect[0][0], rect[0][1], rects.x + rects.w, rects.y + rects.h)
             self.hotspots = hotspot
@@ -80,8 +83,8 @@ class VaultSpriteActionFrame(object):
         self.delta = delta
         self.duration = duration
         self.vault_sprite_action = proxy(vault_sprite_action) if type(vault_sprite_action) not in ProxyTypes else vault_sprite_action
-        self.surfaces = {}
-        self.masks = {}
+        # self.surfaces = {}
+        # self.masks = {}
         self.pos_modifier = None
         self.__recalc_pos_modifier()
         if events is None:
@@ -90,6 +93,11 @@ class VaultSpriteActionFrame(object):
             self.events = [events]
         else:
             self.events = events
+        base_image = self.vault_sprite_action.vault_sprite.vault.image
+        rect = list(self.rect)
+        # Flip y coord.
+        rect[1] = base_image.height - rect[1] - rect[3]
+        self.image = base_image.get_region(*rect)
 
     # def __del__(self):
     #     print 'VaultSpriteActionFrame.__del__(%s)' % self
@@ -101,9 +109,13 @@ class VaultSpriteActionFrame(object):
 
     def copy(self):
         if not self.is_piggyback:
-            frame = VaultSpriteActionFrame(self.vault_sprite_action, self.rect, self.hotspot, self.delta, self.duration, self.events)
+            frame = VaultSpriteActionFrame(self.vault_sprite_action, self.rect,
+                                           self.hotspot, self.delta,
+                                           self.duration, self.events)
         else:
-            frame = VaultSpriteActionFrame(self.vault_sprite_action, self.rects, self.hotspots, self.deltas, self.duration, self.events)
+            frame = VaultSpriteActionFrame(self.vault_sprite_action, self.rects,
+                                           self.hotspots, self.deltas,
+                                           self.duration, self.events)
         return frame
 
     def get_rect(self):
@@ -121,37 +133,40 @@ class VaultSpriteActionFrame(object):
     def get_duration(self):
         return self.duration
 
-    def get_surface(self, gamma=1.0):
-        gamma_s = str(gamma)
-        if gamma_s not in self.surfaces:
-            if not self.is_piggyback:
-                self.surfaces[gamma_s] = self.vault_sprite_action.vault_sprite.vault.get_subsurface(self.rect, gamma)
-            else:
-                # Build surface based on items supplied.
-                surface = pygame.surface.Surface((self.rect[2], self.rect[3]), pygame.locals.SRCALPHA, 32)
-                for pos, rect in enumerate(self.rects):
-                    part = self.vault_sprite_action.vault_sprite.vault.get_subsurface(rect, gamma)
-                    hotspot = self.hotspots[pos]
-                    delta = self.deltas[pos]
-                    x = hotspot[0] - rect[0] + delta[0]
-                    y = hotspot[1] - rect[1] + delta[1]
-                    surface.blit(part, (x, y))
-                self.surfaces[gamma_s] = surface
-        return self.surfaces[gamma_s]
+    # def get_surface(self, gamma=1.0):
+    #     gamma_s = str(gamma)
+    #     if gamma_s not in self.surfaces:
+    #         if not self.is_piggyback:
+    #             self.surfaces[gamma_s] = self.vault_sprite_action.vault_sprite.vault.get_subsurface(self.rect, gamma)
+    #         else:
+    #             # Build surface based on items supplied.
+    #             surface = pygame.surface.Surface((self.rect[2], self.rect[3]), pygame.locals.SRCALPHA, 32)
+    #             for pos, rect in enumerate(self.rects):
+    #                 part = self.vault_sprite_action.vault_sprite.vault.get_subsurface(rect, gamma)
+    #                 hotspot = self.hotspots[pos]
+    #                 delta = self.deltas[pos]
+    #                 x = hotspot[0] - rect[0] + delta[0]
+    #                 y = hotspot[1] - rect[1] + delta[1]
+    #                 surface.blit(part, (x, y))
+    #             self.surfaces[gamma_s] = surface
+    #     return self.surfaces[gamma_s]
 
-    def get_bounding_rect(self, min_alpha=1):
-        if min_alpha not in self.__bounding_rect:
-            surface = self.get_surface()
-            self.__bounding_rect[min_alpha] = surface.get_bounding_rect(min_alpha)
-        return self.__bounding_rect[min_alpha].copy()
+    def get_image(self):
+        return self.image
 
-    def get_mask(self, gamma=1.0):
-        gamma_s = str(gamma)
-        if gamma_s not in self.masks:
-            surface = self.get_surface(gamma)
-            mask = pygame.mask.from_surface(surface)
-            self.masks[gamma_s] = mask
-        return self.masks[gamma_s]
+    # def get_bounding_rect(self, min_alpha=1):
+    #     if min_alpha not in self.__bounding_rect:
+    #         surface = self.get_surface()
+    #         self.__bounding_rect[min_alpha] = surface.get_bounding_rect(min_alpha)
+    #     return self.__bounding_rect[min_alpha].copy()
+
+    # def get_mask(self, gamma=1.0):
+    #     gamma_s = str(gamma)
+    #     if gamma_s not in self.masks:
+    #         surface = self.get_surface(gamma)
+    #         mask = pygame.mask.from_surface(surface)
+    #         self.masks[gamma_s] = mask
+    #     return self.masks[gamma_s]
 
     def get_action(self):
         return self.vault_sprite_action
@@ -170,11 +185,13 @@ class VaultSpriteAction(object):
     def __init__(self, name, frames, vault_sprite):
         super(VaultSpriteAction, self).__init__()
         self.name = name
+        self.vault_sprite = proxy(vault_sprite)
         if frames and frames[-1] == -1:  # Should we add a reverse loop?
             frames = frames[:-1]
             frames.extend(reversed(frames[1:-1]))
         self.frames = [VaultSpriteActionFrame(*([self] + frame)) for frame in frames]
-        self.vault_sprite = proxy(vault_sprite)
+        self.animation = None
+        self._update_animation()
 
     # def __del__(self):
     #     print 'VaultSpriteAction.__del__(%s)' % self
@@ -183,6 +200,19 @@ class VaultSpriteAction(object):
         return '<VaultSpriteAction(' \
             'name = %s, frames = %s)>' % (
             self.name, len(self.frames))
+
+    def _update_animation(self):
+        if len(self.frames) == 1:
+            self.animation = self.frames[0].image
+        else:
+            # TODO implement support for (min, max) durations based on pyglet events.
+            self.animation = pyglet.image.Animation([
+                pyglet.image.AnimationFrame(
+                    image=v_frame.image,
+                    duration=v_frame.duration / 1000.0,
+                )
+                for v_frame in self.frames
+            ])
 
     def get_name(self):
         return self.name
@@ -193,8 +223,11 @@ class VaultSpriteAction(object):
     def get_frame(self, pos):
         return self.frames[pos]
 
-    def get_sprite(self, pos):
+    def get_sprite(self):
         return self.vault_sprite
+
+    def get_animation(self):
+        return self.animation
 
     def add_frame(self, rect_or_frame, hotspot=None, delta=None, msecs=60, events=None):
         if type(rect_or_frame) is VaultSpriteActionFrame:
@@ -207,6 +240,7 @@ class VaultSpriteAction(object):
             if delta is None:
                 delta = rect[0], rect[1]
             self.frames.append(VaultSpriteActionFrame(self, rect, hotspot, delta, msecs, events))
+        self._update_animation()
         return self.frames[-1]
 
     def clear_frames(self):
@@ -267,13 +301,27 @@ class Vault(object):
         super(Vault, self).__init__()
         self.texture_module = vault
         self.texture_filename = vault.filename
+        if self.texture_filename is not None:
+            pyglet.resource.path.insert(0, os.path.dirname(vault.__file__))
+            pyglet.resource.reindex()
+            self.image = pyglet.resource.image(self.texture_filename, flip_y=True)
+            pyglet.resource.path.pop(0)
+            pyglet.resource.reindex()
+            # Now modify our texture for better tiling.
+            gl = pyglet.gl
+            texture = self.image
+            gl.glBindTexture(texture.target, texture.id)
+            gl.glTexParameteri(texture.target, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
+            gl.glTexParameteri(texture.target, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
+            # gl.glTexParameteri(texture.target, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_BORDER_ARB)
+            # gl.glTexParameteri(texture.target, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_BORDER_ARB)
+            # gl.glTexParameteri(texture.target, gl.GL_TEXTURE_WRAP_R, gl.GL_CLAMP_TO_BORDER_ARB)
+            gl.glBindTexture(texture.target, 0)
+        else:
+            self.image = None
         self.sprites = OrderedDict()
         for name, actions in vault.sprites.iteritems():
             self.sprites[name] = VaultSprite(name, actions, self)
-        if self.texture_filename is not None:
-            self.surface = load_image(self.texture_filename)
-        else:
-            self.surface = None
 
     # def __del__(self):
     #     print 'Vault.__del__(%s)' % self
@@ -313,8 +361,8 @@ class Vault(object):
             name = self.sprites.keys()[0]
         return self.sprites[name]
 
-    def get_subsurface(self, rect, gamma=1.0):
-        return get_subsurface(self.texture_filename, rect, gamma)
+    # def get_subsurface(self, rect, gamma=1.0):
+    #     return get_subsurface(self.texture_filename, rect, gamma)
 
     def add_sprite(self, name, actions={}):
         self.sprites[name] = VaultSprite(name, actions, self)
@@ -391,14 +439,16 @@ class Vault(object):
         json.dump(json_data, open(json_filename, 'wb'))
 
 
+class EmptyVault():
+    filename = None
+    sprites = OrderedDict()
+
+
 class GeneratedVault(Vault):
 
     def __init__(self):
-        class EmptyVault():
-            filename = None
-            sprites = OrderedDict()
         super(GeneratedVault, self).__init__(EmptyVault)
-        self.surface_cache = {}
+        # self.surface_cache = {}
 
     # def __del__(self):
     #     print 'GeneratedVault.__del__(%s)' % self
@@ -407,20 +457,20 @@ class GeneratedVault(Vault):
         return '<Vault(' \
             'generated, sprites = %s)>' % len(self.sprites)
 
-    def set_surface(self, surface):
-        self.surface = surface
-        self.surface_cache.clear()
+    def set_image(self, image):
+        self.image = image
+        # self.surface_cache.clear()
 
-    def generate_surface(self, width, height):
-        self.surface = pygame.Surface((width, height)).convert_alpha()
-        self.surface_cache.clear()
-        return self.surface
+    # def generate_surface(self, width, height):
+    #     self.surface = pygame.Surface((width, height)).convert_alpha()
+    #     self.surface_cache.clear()
+    #     return self.surface
 
-    def get_subsurface(self, rect, gamma=1.0):
-        cache_id = '%s::%s' % (rect, gamma)
-        base_cache_id = '%s::%s' % (rect, 1.0)
-        if base_cache_id not in self.surface_cache:
-            self.surface_cache[base_cache_id] = self.surface.subsurface(rect)
-        if cache_id not in self.surface_cache:
-            self.surface_cache[cache_id] = change_gamma(self.surface_cache[base_cache_id], gamma)
-        return self.surface_cache[cache_id]
+    # def get_subsurface(self, rect, gamma=1.0):
+    #     cache_id = '%s::%s' % (rect, gamma)
+    #     base_cache_id = '%s::%s' % (rect, 1.0)
+    #     if base_cache_id not in self.surface_cache:
+    #         self.surface_cache[base_cache_id] = self.surface.subsurface(rect)
+    #     if cache_id not in self.surface_cache:
+    #         self.surface_cache[cache_id] = change_gamma(self.surface_cache[base_cache_id], gamma)
+    #     return self.surface_cache[cache_id]

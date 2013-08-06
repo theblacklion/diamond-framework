@@ -8,7 +8,7 @@ import sys
 import cStringIO
 from functools import wraps
 
-from pygame.time import get_ticks
+from diamond.clock import get_ticks
 
 time_stats = dict()
 
@@ -77,7 +77,7 @@ def time(func):
         contents = output.getvalue()
         sys.stdout = stdout
 
-        print '->', stop - start, 'msecs'
+        print('-> %.4f msecs' % (stop - start))
 
         for line in contents.rstrip().split('\n'):
             print('  %s' % line)
