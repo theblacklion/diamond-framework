@@ -185,23 +185,24 @@ class Matrix(object):
         )
 
     def __ensure_sector_loaded(self, s_x, s_y):
-        s_w, s_h = self.__sector_size
         id = '%d,%d' % (s_x, s_y)
-        if id not in self.__sectors_loaded:
-            self.__sectors_loaded.add(id)
-            # If possible try loading data from disk.
-            if self.__data_path:
-                filename = os.path.join(self.__data_path, 's.%s.csv' % id)
-                # print filename
-                if os.path.exists(filename):
-                    for row in csv.reader(open(filename), skipinitialspace=True):
-                        x, y, z = map(int, row[0:3])
-                        data = row[3]
-                        # print (x, y, z), data
-                        x += s_x * s_w
-                        y += s_y * s_h
-                        # print (x, y, z), data
-                        self.__set_point(x, y, z, str(data))
+        if id in self.__sectors_loaded:
+            return
+        self.__sectors_loaded.add(id)
+        # If possible try loading data from disk.
+        if self.__data_path:
+            filename = os.path.join(self.__data_path, 's.%s.csv' % id)
+            # print filename
+            if os.path.exists(filename):
+                s_w, s_h = self.__sector_size
+                for row in csv.reader(open(filename), skipinitialspace=True):
+                    x, y, z = map(int, row[0:3])
+                    data = row[3]
+                    # print (x, y, z), data
+                    x += s_x * s_w
+                    y += s_y * s_h
+                    # print (x, y, z), data
+                    self.__set_point(x, y, z, str(data))
 
     # @time
     def __get_rect(self, range_x, range_y):
