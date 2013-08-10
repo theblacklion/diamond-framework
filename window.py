@@ -22,7 +22,7 @@ class Window(pyglet.window.Window):
     def __init__(self, width=640, height=480, adapt_width=False, adapt_height=False, **kwargs):
         if 'config' not in kwargs:
             kwargs['config'] = pyglet.gl.Config(
-                # major_version=3, minor_version=0,
+                # major_version=3, minor_version=0,  # TODO Do we really need OpenGL 3?
                 sample_buffers=1, samples=4,
                 double_buffer=True,
             )
@@ -52,6 +52,11 @@ class Window(pyglet.window.Window):
         self._screen_size = screen_size
         self._view_size = view_size
 
+        if 'fullscreen' in kwargs:
+            fullscreen = kwargs.pop('fullscreen')
+        else:
+            fullscreen = False
+
         super(Window, self).__init__(**kwargs)
         self._batch = pyglet.graphics.Batch()
         self.root_node = Node()
@@ -62,6 +67,9 @@ class Window(pyglet.window.Window):
         self.fbo = FBO(*screen_size)
         self._setup_fbo_dl()
         # self._setup_fbo_batch()
+
+        if fullscreen:
+            self.toggle_fullscreen()
 
     def __del__(self):
         pyglet.gl.glDeleteLists(self._fbo_dl, 1)
