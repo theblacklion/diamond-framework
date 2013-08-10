@@ -9,6 +9,7 @@ import sys
 import ConfigParser
 from collections import OrderedDict
 from math import ceil, floor
+import csv
 
 from diamond import pyglet
 from diamond.rect import Rect
@@ -282,11 +283,9 @@ class TileMatrix(Node):
         self.__tile_size = 32, 32  # Never go less than 4x4 or doom awaits you!
         self.__sector_size = 10, 10  # Default for visual sectors.
 
-        matrix = Matrix()
-        matrix.set_sector_size(*self.__sector_size)  # Default until a config is being loaded.
-        self.__matrix = matrix
+        self.__matrix = Matrix()
         # For debugging. DISABLE ME!
-        # matrix.set_default_value({0: '72'})
+        # self.__matrix.set_default_value({0: '72'})
 
         self.__layers = dict()
         self.__layer_config = dict()
@@ -315,8 +314,8 @@ class TileMatrix(Node):
         if not self.__default_sheet:
             self.__default_sheet = self.__vaults.keys()[0]
 
-    def load_matrix(self, path, config_file='config.ini'):
-        self.__matrix.set_data_path(path, config_file)
+    def load_matrix(self, path):
+        self.__matrix.data_path = path
         if not self.__config.has_section('matrix'):
             self.__config.add_section('matrix')
         self.__config.set('matrix', 'data_path', path)
@@ -370,7 +369,7 @@ class TileMatrix(Node):
             #     raise Exception('Unknown section in config file found: %s' % section)
         # config.write(sys.stdout)
 
-    # @time
+    @time
     def update_sectors(self):
         # timer = Timer()
         # timer.start()
@@ -426,9 +425,8 @@ class TileMatrix(Node):
             return
         self.__last_matrix_rect = matrix_rect
         # Get the rect.
-        matrix = self.__matrix.get_rect(*matrix_rect)
-        # print matrix
-        # print len(matrix[0]), len(matrix)
+        matrix_layers = self.__matrix.get_rect(*matrix_rect)
+        # print matrix_layers
 
         # timer.stop()
         # print 2, timer.result
@@ -436,14 +434,18 @@ class TileMatrix(Node):
 
         # Separate layer and sector data.
         layer_data = dict()
-        for y, row in enumerate(matrix):
-            pos_y = (matrix_rect[1] + y) // s_h
-            y = y % s_h
-            for x, col in enumerate(row):
-                if col is None:
-                    continue
-                pos_x = (matrix_rect[0] + x) // s_w
+        for layer_no, matrix in matrix_layers.iteritems():
+            # Ensure layer.
+            try:
+                layer_matrix = layer_data[layer_no]
+            except KeyError:
+                layer_matrix = layer_data[layer_no] = dict()
+
+            for (x, y), id in matrix.iteritems():
+                pos_x = x // s_w
                 x = x % s_w
+                pos_y = y // s_h
+                y = y % s_h
                 # print '*** sector', pos_x, pos_y
 
                 # Separate data.
@@ -451,22 +453,22 @@ class TileMatrix(Node):
                 # if (x, y) == (0, 0):
                 #     col = {0: '73'}
                 # print x, y, col
-                for layer_no, id in col.iteritems():
-                    # Normalize data format.
-                    if '/' not in id:
-                        sheet = default_sheet
-                    else:
-                        sheet, id = id.split('/', 1)
-                    # Ensure layer.
-                    try:
-                        layer_matrix = layer_data[layer_no]
-                    except KeyError:
-                        layer_matrix = layer_data[layer_no] = dict()
-                    # Ensure sector.
-                    try:
-                        sector_matrix = layer_matrix[(pos_x, pos_y)]
-                    except KeyError:
-                        sector_matrix = layer_matrix[(pos_x, pos_y)] = dict()
+
+                # Normalize data format.
+                if '/' in id:
+                    sheet, id = id.split('/', 1)
+                else:
+                    sheet = default_sheet
+                # Ensure sector.
+                try:
+                    sector_matrix = layer_matrix[(pos_x, pos_y)]
+                except KeyError:
+                    sector_matrix = layer_matrix[(pos_x, pos_y)] = {
+                        sheet: {
+                            (x, y): id
+                        }
+                    }
+                else:
                     # Set sector data.
                     try:
                         sector_matrix[sheet][x, y] = id
@@ -513,7 +515,7 @@ class TileMatrix(Node):
         for order_id, layer in layers.items():
             for id, data in layer._sectors.items():
                 x, y, sector = data
-                pos = sector.position
+                # pos = sector.position
 
                 sector_id = (order_id, (x // (t_w * s_w), y // (t_h * s_h)))
                 # print sector_id
@@ -578,9 +580,6 @@ class TileMatrix(Node):
             self.update_sectors()
             self.__last_map_pos = cur_map_pos, (x, y)
 
-    def find_in_matrix_by_tilesheet(self, value):
-        return self.__matrix.find_in_matrix_by_tilesheet(value)
-
     # @time
     def get_layer(self, z):
         layers = self.__layers
@@ -609,3 +608,76 @@ class TileMatrix(Node):
             else:
                 return value
         return None
+
+    # def set_tiles_at(self, changes):
+    #     layer_data = 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # TODO rework to react on matrix.data.saved event!
+    def _rebuild_index(self):
+        s_w, s_h = self._sector_size
+        print('Rebuilding matrix index...')
+        for root, dirs, files in os.walk(self._data_path):
+            for filename in files:
+                if filename.startswith('i.') and filename.endswith('.csv'):
+                    os.remove(os.path.join(root, filename))
+        indexes = dict()
+        top, left, bottom, right = 0, 0, 0, 0
+        for root, dirs, files in os.walk(self._data_path):
+            files = sorted(files)
+            # print(root, dirs, files)
+            print('Found %d sectors to index...' % len(files))
+            for filename in files:
+                if not (filename.startswith('s.') and filename.endswith('.csv')):
+                    continue
+                # print('Inspecting sector file: %s' % filename)
+                reader = csv.reader(open(os.path.join(root, filename)), skipinitialspace=True)
+                s_x, s_y = map(int, filename[2:-4].split(','))
+                for x, y, z, id in reader:
+                    x = (s_x * s_w) + int(x)
+                    y = (s_y * s_h) + int(y)
+                    top = min(top, y)
+                    left = min(left, x)
+                    bottom = max(bottom, y)
+                    right = max(right, x)
+                    # TODO track z axis min and max.
+                    sheet, tile_id = id.split('/')
+                    # Update index of specific tile.
+                    if id not in indexes:
+                        id_ = '%s,%s' % (sheet, tile_id)
+                        index_filename = os.path.join(self._data_path, 'i.%s.csv' % id_)
+                        indexes[id] = csv.writer(open(index_filename, 'w'))
+                    indexes[id].writerow((x, y, z))
+                    # Update index of used tilesheet.
+                    if sheet not in indexes:
+                        index_filename = os.path.join(self._data_path, 'i.%s.csv' % sheet)
+                        indexes[sheet] = csv.writer(open(index_filename, 'w'))
+                    indexes[sheet].writerow((x, y, z, tile_id))
+        index_filename = os.path.join(self._data_path, 'b.csv')
+        writer = csv.writer(open(index_filename, 'w'))
+        writer.writerow((top, left, bottom, right))
+        self._top, self._left, self._bottom, self._right = top, left, bottom, right
+        print('Finished rebuilding matrix index.')
+
+    def find_in_matrix_by_tilesheet(self, value):
+        if '/' in value:
+            value = '%s,%s' % tuple(value.split('/'))
+        index_filename = os.path.join(self.__matrix.data_path, 'i.%s.csv' % value)
+        if os.path.exists(index_filename):
+            reader = csv.reader(open(index_filename))
+            return [map(int, row[:3]) + row[3:] for row in reader]
+        else:
+            return []
