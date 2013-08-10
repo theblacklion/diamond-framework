@@ -135,21 +135,27 @@ class TileMatrixSector(object):
         self._rect.x = x
         self._rect.y = y
         sprite_data = self._sprite_data
-        for sheet, matrix in self._matrices.iteritems():
-            vertices = []
-            sprites = sprite_data[sheet]
-            for pos, id in matrix.iteritems():
-                # print frame
-                if self._visible:
+        if self._visible:
+            for sheet, matrix in self._matrices.iteritems():
+                vertices = []
+                sprites = sprite_data[sheet]
+                for pos, id in matrix.iteritems():
+                    # print frame
                     s_w, s_h = sprites[id][0].rect[2:]
                     x1 = int(x) + pos[0] * w
                     y1 = int(y) + pos[1] * h
                     x2 = x1 + s_w
                     y2 = y1 + s_h
                     vertices.extend([x1, y1, x2, y1, x2, y2, x1, y2])
-                else:
+                self._vertex_lists[sheet].vertices[:] = vertices
+        else:
+            for sheet, matrix in self._matrices.iteritems():
+                vertices = []
+                sprites = sprite_data[sheet]
+                for pos, id in matrix.iteritems():
+                    # print frame
                     vertices.extend([0, 0, 0, 0, 0, 0, 0, 0])
-            self._vertex_lists[sheet].vertices[:] = vertices
+                self._vertex_lists[sheet].vertices[:] = vertices
 
     def _set_x(self, x):
         if x != self._x:
