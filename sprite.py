@@ -78,12 +78,15 @@ class Sprite(pyglet.sprite.Sprite):
     #                     lambda self, pos: self.set_position(*pos))
 
     def _update_inherited_visibility(self):
-        self._visible = self._parent_node._inherited_visibility
+        new_visibility = self._my_visibility and self._parent_node._inherited_visibility
+        if new_visibility != self._visible:
+            # We reuse pyglets sprite code here.
+            self._visible = new_visibility
+            self._update_position()
 
     def _set_visible(self, visible):
         self._my_visibility = visible
         self._update_inherited_visibility()
-        self._update_position()
 
     visible = property(lambda self: self._visible, _set_visible)
 
