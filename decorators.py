@@ -97,5 +97,5 @@ def time(func):
 
 def print_time_stats():
     for func, stats in time_stats.iteritems():
-        print('%s: min=%d, max=%d, avg=%d, count=%d' % (func,
+        print('%s: min=%.4f, max=%.4f, avg=%.4f, count=%d' % (func,
               min(stats), max(stats), sum(stats) / len(stats), len(stats)))
