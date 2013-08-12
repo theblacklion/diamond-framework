@@ -51,7 +51,7 @@ class Node(object):
         self._child_nodes = []
         self._child_sprites = []
         self._order_id = 0
-        self._sprite_group = PositionalGroup(0)
+        self._group = PositionalGroup(0)
         self._parent_node = None
         self._visible = True
         self._inherited_visibility = True
@@ -75,8 +75,8 @@ class Node(object):
 
     # @time
     def _update_real_position(self):
-        self._sprite_group.x = self._x
-        self._sprite_group.y = self._y
+        self._group.x = self._x
+        self._group.y = self._y
     #     try:
     #         self._x_real = self._parent_node._x_real + self._x
     #         self._y_real = self._parent_node._y_real + self._y
@@ -125,9 +125,9 @@ class Node(object):
 
     # @time
     def _update_group_order(self):
-        self._sprite_group.order = int('%s%05d' % (self._parent_node._order_id, self._order_id))
-        # self._sprite_group.order = self._order_id
-        # print self, self._sprite_group.order
+        self._group.order = int('%s%05d' % (self._parent_node._order_id, self._order_id))
+        # self._group.order = self._order_id
+        # print self, self._group.order
 
     # @time
     def _set_order_id(self, id):
@@ -185,7 +185,7 @@ class Node(object):
         # print 'ORDER ID =', node.order_id
         if node.order_id is None:
             node.order_id = len(self._child_nodes)
-        node._sprite_group.parent = self._sprite_group
+        node._group.parent = self._group
         node._update_inherited_visibility()
         node._update_real_position()
         node._update_group_order()
@@ -202,7 +202,7 @@ class Node(object):
             if node.order_id is None:
                 node.order_id = order_id
             order_id += 1
-            node._sprite_group.parent = self._sprite_group
+            node._group.parent = self._group
             node._update_inherited_visibility()
             node._update_real_position()
             node._update_group_order()
@@ -217,7 +217,7 @@ class Node(object):
             # print 'ADDED SPRITE TO BATCH'
         except AttributeError:
             pass
-        sprite.group = self._sprite_group
+        sprite.group = self._group
         sprite._parent_node = self
         # sprite._update_real_position()
         sprite._update_inherited_visibility()
@@ -227,7 +227,7 @@ class Node(object):
         for sprite in sprites:
             if sprite._parent_node:
                 sprite.remove_from_parent()
-            sprite.group = self._sprite_group
+            sprite.group = self._group
             try:
                 sprite.batch = self._window._batch
                 # print 'ADDED ONE OF MANY SPRITES TO BATCH'
@@ -256,7 +256,7 @@ class Node(object):
     def remove_node(self, node):
         self._child_nodes.remove(node)
         node._parent_node = None
-        node._sprite_group.parent = None
+        node._group.parent = None
 
     def remove_sprite(self, sprite):
         self._child_sprites.remove(sprite)

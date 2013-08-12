@@ -10,6 +10,7 @@ import ConfigParser
 from collections import OrderedDict
 from math import ceil, floor
 import csv
+from types import GeneratorType
 
 from diamond import pyglet
 from diamond.rect import Rect
@@ -47,7 +48,7 @@ class TileMatrixSector(object):
         self._vertex_lists = dict()
         self._opacity = 255
         self._rgb = (255, 255, 255)
-        self._sprite_groups = dict()
+        self._groups = dict()
         self._visible = True
 
         for sheet, matrix in matrices.iteritems():
@@ -58,7 +59,7 @@ class TileMatrixSector(object):
             blend_src = pyglet.gl.GL_SRC_ALPHA
             blend_dest = pyglet.gl.GL_ONE_MINUS_SRC_ALPHA
             sprite_group = pyglet.sprite.SpriteGroup(texture, blend_src, blend_dest, group)
-            self._sprite_groups[sheet] = sprite_group
+            self._groups[sheet] = sprite_group
 
             tex_coords = self._gather_tex_cords(matrix, sprite_data[sheet], texture.height)
             # print len(tex_coords)
@@ -240,7 +241,7 @@ class TileMatrixLayer(Node):
     # @time
     def add_sector(self, id, x, y, matrices, matrix_size, tile_size):
         batch = self.window._batch
-        group = self._sprite_group
+        group = self._group
         # for sheet, matrix in matrices.iteritems():
         #     print 'sheet', sheet, matrix
         # print 'sector real pos =', self._x_real, self._y_real
@@ -369,7 +370,7 @@ class TileMatrix(Node):
             #     raise Exception('Unknown section in config file found: %s' % section)
         # config.write(sys.stdout)
 
-    @time
+    # @time
     def update_sectors(self):
         # timer = Timer()
         # timer.start()
@@ -600,7 +601,12 @@ class TileMatrix(Node):
         tile_size = self.__tile_size
         return x * tile_size[0], y * tile_size[1]
 
-    def get_tile_id_at(self, x, y, z=None):
+    def get_boundaries(self):
+        left, top, right, bottom = self.__matrix.boundaries
+        t_w, t_h = self.__tile_size
+        return left * t_w, top * t_h, right * t_w, bottom * t_h
+
+    def get_tile_id_at(self, x, y, z):
         value = self.__matrix.get_point(x, y, z)
         if value is not None:
             if type(value) is dict:
@@ -609,10 +615,24 @@ class TileMatrix(Node):
                 return value
         return None
 
-    # def set_tiles_at(self, changes):
-    #     layer_data = 
+    @time
+    def set_tiles_at(self, points):
+        if type(points) is GeneratorType:
+            points = set(tuple(point) for point in points)
 
+        layer_data = dict(
+            (z, filter(lambda point: point[2] == z, points))
+            for _, _, z, _ in points
+        )
+        print layer_data
 
+        for layer_no, points in layer_data.iteritems():
+            layer = self.get_layer(layer_no)
+            # TODO Generate sheet and sector data.
+
+            # TODO Modify existing sectors or create new ones.
+
+        # TODO modify matrix.
 
 
 
