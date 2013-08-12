@@ -313,9 +313,9 @@ class Vault(object):
             gl.glBindTexture(texture.target, texture.id)
             gl.glTexParameteri(texture.target, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
             gl.glTexParameteri(texture.target, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
-            # gl.glTexParameteri(texture.target, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_BORDER_ARB)
-            # gl.glTexParameteri(texture.target, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_BORDER_ARB)
-            # gl.glTexParameteri(texture.target, gl.GL_TEXTURE_WRAP_R, gl.GL_CLAMP_TO_BORDER_ARB)
+            gl.glTexParameteri(texture.target, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_BORDER_ARB)
+            gl.glTexParameteri(texture.target, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_BORDER_ARB)
+            gl.glTexParameteri(texture.target, gl.GL_TEXTURE_WRAP_R, gl.GL_CLAMP_TO_BORDER_ARB)
             gl.glBindTexture(texture.target, 0)
         else:
             self.image = None
