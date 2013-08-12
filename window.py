@@ -68,6 +68,8 @@ class Window(pyglet.window.Window):
         self._setup_fbo_dl()
         # self._setup_fbo_batch()
 
+        self.set_clear_color()
+
         if fullscreen:
             self.toggle_fullscreen()
 
@@ -176,6 +178,9 @@ class Window(pyglet.window.Window):
 
         gl.glOrtho(0, w, h, 0, -1, 1)
         gl.glMatrixMode(gl.GL_MODELVIEW)
+
+    def set_clear_color(self, red=0.0, green=0.0, blue=0.0):
+        pyglet.gl.glClearColor(red, green, blue, 1.0)
 
     def on_draw(self):
         self.fbo.attach()
